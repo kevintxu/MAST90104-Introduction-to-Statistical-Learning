@@ -1,0 +1,556 @@
+---
+title: "Assignment 2"
+author: "Kevin Xu"
+date: "20 August 2017"
+output:
+  pdf_document: default
+  html_document: default
+  word_document:
+    reference_docx: Style_Sheet.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(ggplot2)
+library(GGally)
+library(plotly)
+library(dplyr)
+library(car)
+library(Matrix)
+```
+
+## Question 1
+$\mathbf{y}\sim MVN(X\mathbf{b}, \sigma^2I)$
+
+Let: 
+$$
+C=
+\begin{bmatrix}
+0 & ...  & 1_{1i} & ...  & ... & 0 \\
+0 & ... & ... & 1_{2j} & ... & 0 \\
+\end{bmatrix}
+$$
+
+Then:
+$$
+\begin{aligned}
+C(X^TX)^{-1}X^T\mathbf{y} &\sim MVN(X\mathbf{\beta}, (C(X^TX)^{-1}X^T)^T\sigma^2IC(X^TX)^{-1}X^T) \\
+&\sim MVN(X\mathbf{\beta}, C(X^TX)^{-1}X^TI(C(X^TX)^{-1}X^T)^T\sigma^2) \\
+&\sim MVN(X\mathbf{\beta}, C(X^TX)^{-1}X^T(X^T((X^TX)^{-1})^TC^T)\sigma^2) \\
+&\sim MVN(X\mathbf{\beta}, C(X^TX)^{-1}X^T(X^T((X^TX)^T)^{-1}C^T)\sigma^2) \\
+&\sim MVN(X\mathbf{\beta}, C(X^TX)^{-1}X^TX^T(X^TX)^{-1}C^T\sigma^2) \\
+&\sim MVN(X\mathbf{\beta}, C(X^TX)^{-1}C^T\sigma^2) \\
+\end{aligned}
+$$
+
+Show $C(X^TX)^{-1}X^T\mathbf{y}$ is independent to the quadratic form $\mathbf{y}^T(I-H)\mathbf{y}$. If $\mathbf{y}^TA\mathbf{y}$ and $B\mathbf{y}$ are independent, where $B = C(X^TX)^{-1}X^T$ and $A = I-H = I-X(X^TX)^{-1}X^T$, then:
+
+$$
+\begin{aligned}
+BVA &= 0 \\
+C(X^TX)^{-1}X^T \sigma^2I (I-X(X^TX)^{-1}X^T) &= 0 \\
+\sigma^2(C(X^TX)^{-1}X^T - C(X^TX)^{-1}X^TX(X^TX)^{-1}X^T) &= 0 \\
+\sigma^2(C(X^TX)^{-1}X^T - C(X^TX)^{-1}X^T) &= 0 \\
+\sigma^2(0) &= 0 \\
+LHS &= RHS \\
+\end{aligned}
+$$
+Let $V = C(X^TX)^{-1}C^T\sigma^2$
+
+Then quadratic form of $(C(X^TX)^{-1}X^T\mathbf{y} - C\mathbf{\beta})^TV^{-1}(C(X^TX)^{-1}X^T\mathbf{y} - C\mathbf{\beta})$ is a $\chi^2$ distribution. Let $\mathbf{b}=(X^TX)^{-1}X^T\mathbf{y}$:
+
+$$
+\begin{aligned}
+&(C(X^TX)^{-1}X^T\mathbf{y} - C\mathbf{\beta})^TV^{-1}(C(X^TX)^{-1}X^T\mathbf{y} - C\mathbf{\beta}) \\
+&= (C\mathbf{b} - C\mathbf{\beta})^TV^{-1}(C\mathbf{b} - C\mathbf{\beta})\\
+&= (C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T\sigma^2)^{-1}(C\mathbf{b} - C\mathbf{\beta})\\
+&= \frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{\sigma^2}\\
+\end{aligned}
+$$
+The above is a $\chi^2$ distribution with $df=rank(C)=2$ and $ncp=0$ (as $\mu=0$).
+
+We also know that $\frac{\mathbf{y}^T(I-H)\mathbf{y}}{\sigma^2}$ is a $\chi^2$ distribution with $df=n-p$ and $ncp=0$ (as $\mu=0$).
+
+The two $\chi^2$ distribution are independent.
+
+Therefore, we can have a $F$ distribution based on the two above $\chi^2$ distribution.
+
+$$
+\begin{aligned}
+&\left(\frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2\sigma^2}\right) / \left(\frac{\mathbf{y}^T(I-H)\mathbf{y}}{\sigma^2(n-p)} \right)\\
+&= \left(\frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2\sigma^2}\right) / \left(\frac{SS_{Res}}{\sigma^2(n-p)} \right) \\
+&= \left(\frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2}\right) / \left(\frac{SS_{Res}}{(n-p)} \right) \\
+&= \left(\frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2}\right) / \left(\frac{s^2(n-p)}{(n-p)} \right) \\
+&= \frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2s^2} \\
+\end{aligned}
+$$
+
+let $f_\alpha$ be the critical value of the $F$ distribution with $df$ of $2$ and $n-p$ and probability of $\alpha$. Then:
+$$
+P\left(\frac{(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta})}{2s^2} \leq f_\alpha \right) = 1-\alpha
+$$
+
+Which gives us joint confidence region of:
+$$
+\begin{aligned}
+(C\mathbf{b} - C\mathbf{\beta})^T(C(X^TX)^{-1}C^T)^{-1}(C\mathbf{b} - C\mathbf{\beta}) &\leq 2s^2f_\alpha  \\
+\left(
+\begin{bmatrix}
+b_i\\
+b_j
+\end{bmatrix}
+- 
+\begin{bmatrix}
+\beta_i\\
+\beta_j
+\end{bmatrix}
+\right)^T
+(C(X^TX)^{-1}C^T)^{-1}
+\left(
+\begin{bmatrix}
+b_i\\
+b_j
+\end{bmatrix}
+- 
+\begin{bmatrix}
+\beta_i\\
+\beta_j
+\end{bmatrix}
+\right)
+&\leq 2s^2f_\alpha
+\end{aligned}
+$$
+
+## Question 2
+
+```{r q2, echo=FALSE, warning=FALSE}
+q2_df = data.frame(
+  cars_sold_k = c(5.5, 5.9, 6.5, 5.9, 8.0, 9.0, 10.0, 10.8),
+  cost_k = c(7.2, 10.0, 9.0, 5.5, 9.0, 9.8, 14.5, 8.0),
+  unemp_rate = c(8.7, 9.4, 10.0, 9.0, 12.0, 11.0, 12.0, 13.7),
+  int_rate = c(5.5, 4.4, 4.0, 7.0, 5.0, 6.2, 5.8, 3.9)
+)
+```
+
+### a)
+
+```{r q2a, echo=FALSE, warning=FALSE}
+q2_Y = q2_df$cars_sold_k
+q2_X = cbind(1, c(q2_df$cost_k), c(q2_df$unemp_rate), c(q2_df$int_rate))
+q2_n = dim(q2_X)[1]
+q2_p = dim(q2_X)[2]
+q2_H = q2_X %*% ginv(t(q2_X) %*% q2_X) %*% t(q2_X)
+
+q2_X_rank = qr(q2_X)$rank
+
+#q2_model = lm (q2_df$cars_sold_k ~ q2_df$cost_k + q2_df$unemp_rate + q2_df$int_rate)
+q2_b = c(ginv(t(q2_X) %*% q2_X) %*% t(q2_X) %*% q2_Y)
+
+#deviance(q2_model)/q2_model$df.residual
+q2_e = q2_Y - q2_X %*% q2_b
+q2_SSRes = t(q2_e) %*% (q2_e)
+q2_svar = c(q2_SSRes / (q2_n-q2_p))
+```
+
+The matrix $X$ has a rank of $`r q2_X_rank`$. Thus is full rank.
+
+$$
+\begin{aligned}
+\mathbf{b} &= (X^TX)X^T\mathbf{y} \\
+\mathbf{b} &=
+\begin{bmatrix}
+-7.4044796\\
+0.1207646\\
+1.1174846\\
+0.3861206\\
+\end{bmatrix}\\
+n&= `r q2_n`,\ p= `r q2_p` \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+s^2 &= \frac{(\mathbf{y}-X\mathbf{b})^T(\mathbf{y}-X\mathbf{b})}{n-p} \\
+&= `r q2_svar`
+\end{aligned}
+$$
+
+### b)
+
+```{r q2b, echo=FALSE, warning=FALSE}
+q2_plot = ggpairs(data = q2_df, columns = 2:4)
+q2_V = ginv(t(q2_X) %*% q2_X)
+#q2_z = q2_e / sqrt(q2_svar * (1 - diag(q2_H)))
+rownames(q2_V) <- c("b0","b1","b2","b3")
+colnames(q2_V) <- c("b0","b1","b2","b3")
+q2_V
+```
+
+As above if we do not consider $b_0$, $b_2$ and $b_3$ (i.e. Unemployment and Interest Rate) have the highest $\mathbf{b}$ covariance in magnitude.
+
+### c)
+
+```{r q2c, echo=FALSE}
+q2c_x_s = c(1, 8, 9, 5)
+q2_t_99 = qt(0.995, df = q2_n - q2_p)
+q2c_ci = c(t(q2c_x_s) %*% q2_b) + (q2_t_99 * sqrt(q2_svar) * c(sqrt(t(q2c_x_s) %*% ginv(t(q2_X) %*% q2_X) %*% q2c_x_s)) * c(-1, 1))
+```
+
+$$
+\begin{aligned}
+\mathbf{x^*} &= 
+\begin{bmatrix}
+1\\
+8\\
+9\\
+5\\
+\end{bmatrix}\\
+t_{\frac{\alpha}{2}} &= `r q2_t_99`\\
+s&=`r sqrt(q2_svar)`
+\end{aligned}
+$$
+
+Confidence Interval:
+$$
+\begin{aligned}
+(\mathbf{x^*})^T \pm t_{\frac{\alpha}{2}}s\sqrt{(\mathbf{x^*})^T(X^TX)^{-1}(\mathbf{x^*})} \\
+= [`r q2c_ci`]
+\end{aligned}
+$$
+I.e. between 3,926 and 7173 cars sold.
+
+### d)
+```{r q2d, echo=FALSE}
+q2d_pi = c(4012, 7087) / 1000
+q2d_pi_level = 1 - (1-pt((q2d_pi[2]-q2d_pi[1])/2 / sqrt(q2_svar) / c(sqrt(1 + t(q2c_x_s) %*% ginv(t(q2_X) %*% q2_X) %*% q2c_x_s)), df = q2_n - q2_p)) * 2
+```
+
+$$
+\begin{aligned}
+\mathbf{x^*} &= 
+\begin{bmatrix}
+1\\
+8\\
+9\\
+5\\
+\end{bmatrix}\\
+t_{\frac{\alpha}{2}} &= ?\\
+(\mathbf{x^*})^T \pm t_{\frac{\alpha}{2}}s\sqrt{1+(\mathbf{x^*})^T(X^TX)^{-1}(\mathbf{x^*})} &= (4.012, 7.087)\\
+\end{aligned}
+$$
+
+$$
+(1-\alpha)\% = `r q2d_pi_level` = `r q2d_pi_level*100`\%
+$$
+
+
+### e)
+```{r q2e, echo=FALSE}
+#q2e_null_model = lm (q2_df$cars_sold_k ~ 1)
+#anova(q2e_null_model, q2_model)
+q2e_C = matrix(c(
+  #c(0,0,0,0),
+  c(0,1,0,0),
+  c(0,0,1,0),
+  c(0,0,0,1)
+  ), 3, 4, byrow = TRUE) 
+q2e_b_s = c(0, 0, 0)
+q2e_r = qr(q2e_C)$rank
+q2e_pval = 1 - pf(c(t(q2e_C %*% q2_b - q2e_b_s) %*% ginv(q2e_C %*% ginv(t(q2_X) %*% q2_X) %*% t(q2e_C)) %*% (q2e_C %*% q2_b - q2e_b_s) / q2e_r)/(q2_SSRes/(q2_n-q2_p)), df1 = q2e_r, df2 = q2_n - q2_p)
+```
+
+$$
+H_0: 
+\begin{bmatrix}
+\beta_1 \\
+\beta_2 \\
+\beta_3 \\
+\end{bmatrix} = 
+\begin{bmatrix}
+0 \\
+0 \\
+0 \\
+\end{bmatrix}
+,\ 
+H_1: 
+\begin{bmatrix}
+\beta_1 \\
+\beta_2 \\
+\beta_3 \\
+\end{bmatrix} \neq 
+\begin{bmatrix}
+0 \\
+0 \\
+0 \\
+\end{bmatrix}
+$$
+
+$$
+C = 
+\begin{bmatrix}
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+,\ 
+\mathbf{\delta^*} = 
+\begin{bmatrix}
+0 \\
+0 \\
+0 \\
+\end{bmatrix},\ 
+r = rank(C) = `r q2e_r`
+$$
+
+$$
+\begin{aligned}
+p\ value &= \frac{(C\mathbf{b} - \mathbf{\delta^*})^T (C(X^TX)^{-1}C^T)^{-1} (C\mathbf{b} - \mathbf{\delta^*}) / r }{SS_{Res}/(n-p)} \\
+&= `r q2e_pval`
+\end{aligned} 
+$$
+**Can** reject $H_0$ in favour of $H_1$ at 95% confidence level.
+
+## Question 3
+
+```{r q3, echo=FALSE, warning=FALSE}
+
+q3_dataset <- read.csv("./UCD.csv")
+q3_n = dim(q3_dataset)[1]
+```
+
+### a)
+
+```{r q3a, echo=FALSE}
+q3_model = lm(q3_dataset$height ~ 1 + alcohol + exercise + male + dadht + momht, data = q3_dataset)
+summary(q3_model)
+```
+
+### b)
+
+$$
+H_0: 
+\begin{bmatrix}
+\beta_1 \\
+\beta_2 \\
+\beta_3 \\
+\beta_4 \\
+\beta_5 \\
+\end{bmatrix} = 
+\begin{bmatrix}
+0 \\
+0 \\
+0 \\
+0 \\
+0 \\
+\end{bmatrix}
+,\ 
+H_1: 
+\begin{bmatrix}
+\beta_1 \\
+\beta_2 \\
+\beta_3 \\
+\beta_4 \\
+\beta_5 \\
+\end{bmatrix} \neq 
+\begin{bmatrix}
+0 \\
+0 \\
+0 \\
+0 \\
+0\\
+\end{bmatrix}
+$$
+
+
+```{r q3b, echo=FALSE}
+q3b_null_model = lm(q3_dataset$height ~ 1, data = q3_dataset)
+anova(q3b_null_model, q3_model)
+```
+
+**Can** reject $H_0$ in favour of $H_1$  at 95% confidence level.
+
+### c)
+```{r q3c}
+add1(q3b_null_model, scope = ~ . + q3_dataset$alcohol + q3_dataset$exercise + q3_dataset$male + q3_dataset$dadht + q3_dataset$momht, test = "F")
+
+q3c_model1 = lm(height ~ 1 + male, data = q3_dataset)
+add1(q3c_model1, scope = ~ . + q3_dataset$alcohol + q3_dataset$exercise + q3_dataset$dadht + q3_dataset$momht, test = "F")
+
+q3c_model2 = lm(height ~ 1 + male + dadht, data = q3_dataset)
+add1(q3c_model2, scope = ~ . + q3_dataset$alcohol + q3_dataset$exercise + q3_dataset$momht, test = "F")
+
+q3c_model3 = lm(height ~ 1 + male + dadht + momht, data = q3_dataset)
+add1(q3c_model3, scope = ~ . + q3_dataset$alcohol + q3_dataset$exercise, test = "F")
+
+# Will not add alcohol at 95% confidence level. Will use the model below.
+summary (q3c_model3)
+```
+
+### d)
+```{r q3d}
+q3d_model1 = step(q3_model, scope = ~ . , step=1)
+
+q3d_model2 = step(q3d_model1, scope = ~ . + q3_dataset$exercise , step=1)
+
+summary (q3d_model2)
+```
+
+### e)
+$$
+H_0: \beta_{dad}=\beta_{mom},\ H_1: \beta_{dad}\neq\beta_{mom}
+$$
+
+```{r q3e}
+q3e_C = matrix(c(0,0,0,-1,1),1, 5)
+q3e_d_s = matrix(0,1,1)
+linearHypothesis(q3d_model2, q3e_C, q3e_d_s)
+```
+
+**Cannot** reject $H_0$ in favour of $H_1$ at 95% confidence level. Hence we **cannot** say the parameters corresponding to father's and mother's height are **not equal**.
+
+### f)
+
+```{r q3f}
+q3_X = cbind(1,as.matrix(q3d_model2$model[2:5]))
+q3_H = q3_X %*% solve(t(q3_X)%*%q3_X) %*% t(q3_X)
+q3_res = q3_dataset$height - q3d_model2$fitted.values
+q3_SSRes = sum (q3_res * q3_res)
+q3_svar = q3_SSRes / (dim(q3_X)[1] - rankMatrix(q3_X)[1])
+q3_std_res = q3_res / sqrt(q3_svar*(1-diag(q3_H)))
+q3_leverage = diag(q3_H)
+q3_cd = ((q3_std_res^2)/rankMatrix(q3_X)[1])*(diag(q3_H)/(1-diag(q3_H)))
+
+
+plot(q3d_model2)
+pairs(q3d_model2$model)
+plot(q3d_model2, which=1)
+ggplot(mapping = aes(x = q3d_model2$fitted.values, y = q3d_model2$residuals)) + geom_point()
+plot(q3d_model2, which=2)
+ggplot(mapping = aes(sample = q3_std_res)) + geom_qq()
+plot(q3d_model2, which=3)
+ggplot(mapping = aes(x = q3d_model2$fitted.values, y = sqrt(abs(q3_std_res)))) + geom_point()
+plot(q3d_model2, which=4)
+ggplot(mapping = aes(x = 1:length(q3_cd), y = abs(q3_cd))) + geom_col()
+plot(q3d_model2, which=5)
+ggplot(mapping = aes(x = q3_leverage, y = q3_std_res)) + geom_point()
+```
+
+From the Residual vs Fitted plot, we can see the residuals are fairly uniform along the zero line with roughly comparable number and magnitude of residuals on either side. This shows no evidence of non-linearity.
+
+From the Normal Q-Q plot of standardized residuals, we can see standardized residuals fits a normal distribution. 
+
+From the Scale-Location plot, we can see a fairly flat scatter, which indicates there are no evidence of heteroskedasticity.
+
+From the Residual vs Leverage and Cook's Distance plot, we can see there are no values with high cook's distance, which indicates there are no data points that would significantly change out model if it were taken out.
+
+From the pair plot, we can see some linear relation between male & height, dad & height, and mom & height. A bit of linear relationship between alcohol and height, but the scatter is very high at the low end of alcohol. We can aslo see some linear relationship between mom and dad.
+
+One cause for concern is we **cannot** say the parameters corresponding to father's and mother's height are **not equal**. We may need additional data where the dad is short and mom is tall, or the dad is tall and mom is short. Those two groups may be under represented.
+
+## Question 4
+
+### a)
+
+Since $AA^cA = A$ where $A$ is a $n \times p$ matrix.
+
+Let $A$ and $A^c$ be the following such that the basis vectors are on the left:
+$$
+A = 
+\left[
+\begin{array}{c|c}
+M & A_{12} \\
+\hline
+A_{21} & A_{22}\\
+\end{array}
+\right]
+,\ 
+A^c=
+\left[
+\begin{array}{c|c}
+M^{-1} & 0 \\
+\hline
+0 & 0\\
+\end{array}
+\right]
+$$
+
+Where $M$ is a $r \times r$ matrix, and $r=Rank(A)$.
+
+Since $Rank(A)=Rank(M)=r$, then we need to prove:
+$$
+\begin{aligned}
+r &= Rank(A^cA) \\
+&= Rank \left(
+\left[
+\begin{array}{c|c}
+M & A_{12} \\
+\hline
+A_{21} & A_{22}\\
+\end{array}
+\right]
+\left[
+\begin{array}{c|c}
+M^{-1} & 0 \\
+\hline
+0 & 0\\
+\end{array}
+\right]
+\right) \\ 
+&= Rank \left(
+\left[
+\begin{array}{c|c}
+I & M^{-1}A_{12} \\
+\hline
+0 & 0\\
+\end{array}
+\right]
+\right)
+\end{aligned} 
+$$
+
+Where $I$ is a $r \times r$ identity matrix. The maximum rank of above is $r$ and since $I$ is $r \times r$, the minimum rank is also $r$. Thus $Rank(A^cA) = r = Rank(A)$
+
+### b)
+
+Show that $I-A(A^TA)^cA^T$ is idempotent. Which means:
+$$
+\begin{aligned}
+I-A(A^TA)^cA^T &= (I-A(A^TA)^cA^T)^2 \\
+&= I^2-IA(A^TA)^cA^T-A(A^TA)^cA^TI+(A(A^TA)^cA^T)(A(A^TA)^cA^T) \\
+&= I-2A(A^TA)^cA^T+A(A^TA)^cA^T \\
+&= I-A(A^TA)^cA^T
+\end{aligned}
+$$
+
+Where $A(A^TA)^cA^T$ is idempotent and symmetric in the above equation.
+
+### c)
+
+Show that $Rank(I-A(A^TA)^cA^T) = n - Rank(A)$.
+If $I-A(A^TA)^cA^T$ is idempotent and symmetric, then $Rank(I-A(A^TA)^cA^T) = trace(I-A(A^TA)^cA^T)$.
+
+$I-A(A^TA)^cA^T$ is idempotent from above.
+
+Show $I-A(A^TA)^cA^T$ is symmetric:
+$$
+\begin{aligned}
+I-A(A^TA)^cA^T &= (I-A(A^TA)^cA^T)^T \\
+&= I^T-(A(A^TA)^cA^T)^T  \\
+&= I^T-A^{TT}(A(A^TA)^c)^T  \\
+&= I^T-A^{TT}((A^TA)^c)^TA^T  \\
+&= I^T-A((A^TA)^T)^cA^T  \\
+&= I^T-A((A^TA^{TT}))^cA^T  \\
+&= I-A(A^TA)^cA^T  \\
+\end{aligned}
+$$
+
+Thus $I-A(A^TA)^cA^T$ is idempotent and symmetric, therefore $Rank(I-A(A^TA)^cA^T) = trace(I-A(A^TA)^cA^T)$.
+$$
+\begin{aligned}
+Rank(I-A(A^TA)^cA^T) &= trace(I-A(A^TA)^cA^T)\\
+&= trace(I)-trace(A(A^TA)^cA^T) \\
+&= trace(I)-Rank(A(A^TA)^cA^T) \\
+&= n-Rank(A) \\
+\end{aligned}
+$$

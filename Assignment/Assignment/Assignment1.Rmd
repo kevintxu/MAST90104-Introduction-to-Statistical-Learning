@@ -1,0 +1,636 @@
+---
+title: "Assignment 1"
+author: "Kevin Xu"
+date: "9 August 2017"
+output:
+  word_document:
+    reference_docx: Style_Sheet.docx
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(knitr)
+library(xtable)
+library(Matrix)
+library(expm)
+library(pracma)
+
+
+options(xtable.comment = FALSE)
+```
+
+## Question 1
+Let $P$ be an orthogonal matrix.
+$$
+\begin{aligned}
+A^k &= A^{k+1} \\
+P^TA^kP &= P^TA^{k+1}P \\
+P^TA^kP &= P^TA^kAP \\
+P^TA^kP &= P^TA^kIAP \\
+P^TA^kP &= P^TA^kPP^{-1}AP \\
+P^TA^kP &= P^TA^kPP^TAP \\
+\begin{bmatrix}
+\lambda_1 & 0 & ... & 0 \\
+0 & \lambda_2 & ... & 0 \\
+... & ... & ... & ... \\
+0 & ... & 0 & \lambda_n \\
+\end{bmatrix}
+&= \begin{bmatrix}
+\lambda_1 & 0 & ... & 0 \\
+0 & \lambda_2 & ... & 0 \\
+... & ... & ... & ... \\
+0 & ... & 0 & \lambda_n \\
+\end{bmatrix}P^TAP \\
+\end{aligned}
+$$
+Where $\lambda_1$, $\lambda_2$, ..., $\lambda_n$ are 0 or 1.
+
+Therefore eigenvalues of $A$ are all 0 or 1. Thus A is idempotent.
+
+## Question 2
+Let $P^TA_iP=D_i$ where $D_i$ is a diagnal matrix:
+
+$$
+D_i=\begin{bmatrix} 
+\lambda_{i1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{in}
+\end{bmatrix}
+$$
+
+And let $P^TA_iP=D_j$ where $D_j$ is a diagnal matrix:
+
+$$
+D_j=\begin{bmatrix} 
+\lambda_{j1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{jn}
+\end{bmatrix}
+$$
+
+$P$ is orthogonal, thus $P^{-1}=P^T$
+
+$$
+\begin{aligned}
+P^TA_iP &= D_i \\
+P^{-1}A_iP &= D_i \\
+A_iP &= PD_i \\
+A_i &= PD_iP^{-1} \\
+\end{aligned}
+$$
+
+Similarily $A_j = PD_jP^{-1}$
+
+Show:
+$$
+\begin{aligned}
+A_iA_j &= A_jA_i \\
+PD_iP^{-1}PD_jP^{-1} &= PD_jP^{-1}PD_iP^{-1} \\
+PD_iID_jP^{-1} &= PD_jID_iP^{-1} \\
+PD_iD_jP^{-1} &= PD_jD_iP^{-1} \\
+P\begin{bmatrix} 
+\lambda_{i1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{in}
+\end{bmatrix}
+\begin{bmatrix} 
+\lambda_{j1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{jn}
+\end{bmatrix}P^{-1} &= P
+\begin{bmatrix} 
+\lambda_{j1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{jn}
+\end{bmatrix}
+\begin{bmatrix} 
+\lambda_{i1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{in}
+\end{bmatrix}
+P^{-1} \\
+P\begin{bmatrix} 
+\lambda_{i1}\lambda_{j1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{in}\lambda_{jn}
+\end{bmatrix}P^{-1} &= P
+\begin{bmatrix} 
+\lambda_{j1}\lambda_{i1}  & ... & 0\\ 
+... & ... & ... \\
+0 & ... & \lambda_{jn}\lambda_{in}
+\end{bmatrix}
+P^{-1} \\
+LHS&=RHS
+\end{aligned}
+$$
+
+Thus $A_iA_j = A_jA_i$ for every pair of $i,j = 1,2,..., m$
+
+## Question 3
+Show $Var(A\mathbf{y})=A(Var(\mathbf{y}))A^T$
+$$
+\begin{aligned}
+A(Var(\mathbf{y}))A^T &= Var(A\mathbf{y}) \\
+&= E((A\mathbf{y}-\mathbf{\mu})(A\mathbf{y}-\mathbf{ \mu })^T) \\
+&= E((A\mathbf{y}-E(A\mathbf{y}))(A\mathbf{y}-E(A\mathbf{y}))^T) \\
+&= E(A(\mathbf{y}-E(\mathbf{y}))(A(\mathbf{y}-E(\mathbf{y})))^T) \\
+&= E(A(\mathbf{y}-E(\mathbf{y}))(\mathbf{y}-E(\mathbf{y}))^TA^T) \\
+&= A\ E(((\mathbf{y}-E(\mathbf{y}))(\mathbf{y}-E(\mathbf{y}))^T))\ A^T \\
+&= A\ Var(\mathbf{y})A^T \\
+LHS &= RHS
+\end{aligned}
+$$
+
+Thus $A(Var(\mathbf{y}))A^T = Var(A\mathbf{y})$
+
+## Question 4
+
+### a)
+```{r q4a, echo=FALSE}
+q4_V <- matrix(c(2,0,0,0,2,0,0,0,1),3,3)
+q4_u=c(3,0,-2)
+
+q4_A=1/10*matrix(c(4,-2,0,-2,1,0,0,0,10),3,3)
+q4_Au= q4_A%*%q4_u
+q4_AVA = q4_A%*%q4_V%*%t(q4_A)
+```
+
+$$
+\begin{aligned}
+A\mathbf{y} &\texttt{~} MVN(A\mathbf{\mu},AVA^T) \\
+&\texttt{~}MVN(
+\begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  3.00 \\ 
+  0.00 \\ 
+  -2.00 \\ 
+  \end{bmatrix}, 
+  \begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+\begin{bmatrix}{}
+  2.00 & 0.00 & 0.00 \\ 
+  0.00 & 2.00 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+) \\
+&\texttt{~} MVN (\begin{bmatrix}{}
+  1.20 \\ 
+  -0.60 \\ 
+  -2.00 \\ 
+  \end{bmatrix},
+  \begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  )
+\end{aligned}
+$$
+
+
+### b)
+
+```{r q4b, echo=FALSE}
+q4_AV = q4_A %*% q4_V
+q4_uAu = q4_u%*%q4_A%*%q4_u
+q4_E_yAy = sum(diag(q4_AV)) + q4_uAu
+```
+$$
+\begin{aligned}
+&E(\mathbf{y}^TA\mathbf{y})\\
+&= tr (AV) + \mathbf{\mu}^T A \mathbf{\mu} \\
+&= tr (  \begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  2.00 & 0.00 & 0.00 \\ 
+  0.00 & 2.00 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  )
+  + 
+    \begin{bmatrix}{}
+  3.00 \\ 
+  0.00 \\ 
+  -2.00 \\ 
+  \end{bmatrix}^T
+    \begin{bmatrix}{}
+  2.00 & 0.00 & 0.00 \\ 
+  0.00 & 2.00 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  3.00 \\ 
+  0.00 \\ 
+  -2.00 \\ 
+  \end{bmatrix} \\
+  &= 2 + 7.6 = `r q4_E_yAy`
+\end{aligned}
+$$
+
+
+### c)
+
+```{r q4c, echo=FALSE}
+q4_k = qr(q4_AV)$rank
+q4_ncp = 1/2*q4_uAu
+
+```
+
+$$AV = \begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  2.00 & 0.00 & 0.00 \\ 
+  0.00 & 2.00 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  = \begin{bmatrix}{}
+  0.80 & -0.40 & 0.00 \\ 
+  -0.40 & 0.20 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}$$
+  
+$$Rank(AV)=2=k$$
+$AV$ is idempotent as $AV = (AV)^2$
+
+$$\lambda=\frac{1}{2}    \begin{bmatrix}{}
+  3.00 \\ 
+  0.00 \\ 
+  -2.00 \\ 
+  \end{bmatrix}^T
+    \begin{bmatrix}{}
+  2.00 & 0.00 & 0.00 \\ 
+  0.00 & 2.00 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  \begin{bmatrix}{}
+  3.00 \\ 
+  0.00 \\ 
+  -2.00 \\ 
+  \end{bmatrix}
+  = 3.8$$
+
+Thus $\mathbf{y}^TA\mathbf{y}$\ ~ $\chi^2(df=`r q4_k`, ncp=`r q4_ncp`)$
+
+### d)
+```{r q4d, echo=FALSE}
+q4_VA = q4_V%*%q4_A
+# q4_B_solve = matrix(c(
+#   c(0.8,-0.4,0,0,0,0,0,0,0),
+#   c(0,0,0,-0.4,0.2,0,0,0,0),
+#   c(0,0,0,0,0,0,0,0,1),
+#   c(-0.4,0.2,0,0.8,-0.4,0,0,0,0),
+#   c(0,0,1,0,0,0,0.8,0.4,0),
+#   c(0,0,0,0,0,1,-0.4,0.2,0)
+#   ), 9, 6
+# )
+q4_B_solve = matrix(c(
+  c(0.8,-0.4,0),
+  c(-0.4,0.2,0),
+  c(0,0,1)
+), 3, 3)
+q4_B_solve = rref(q4_B_solve)
+```
+
+Let B be linear combination of $\mathbf{y}$
+
+$B\mathbf{y}$ and $\mathbf{y}^TA\mathbf{y}$ are independent if $BVA=0$
+
+$$
+\begin{aligned}
+B
+\begin{bmatrix}{}
+  2 & 0 & 0 \\ 
+  0 & 2 & 0 \\
+  0 & 0 & 2 \\
+\end{bmatrix}
+\begin{bmatrix}{}
+  0.40 & -0.20 & 0.00 \\ 
+  -0.20 & 0.10 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+  & = 0 \\
+  B
+\begin{bmatrix}{}
+  0.80 & -0.40 & 0.00 \\ 
+  -0.40 & 0.20 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+    &= 0 \\
+\end{aligned}
+$$
+
+Assume $B$ is $1 \times n$ matrix.
+$$
+\begin{aligned}
+\begin{bmatrix}{}
+  b_1 & b_2 & b_3 \\
+\end{bmatrix}
+\begin{bmatrix}{}
+  0.80 & -0.40 & 0.00 \\ 
+  -0.40 & 0.20 & 0.00 \\ 
+  0.00 & 0.00 & 1.00 \\ 
+  \end{bmatrix}
+    &= 0 \\
+  0.8b_1-0.4b_2+ 0b_3&= 0 \\
+  -0.4b_1-0.2b_2+ 0b_3&= 0 \\
+  0b_1-0b_2+ b_3&= 0 \\
+  2b_1=b_2,\ b_3=0
+\end{aligned}
+$$
+
+Thus if $B$ is $1 \times n$ matrix, then the row is 
+$$
+b\begin{bmatrix}{}
+  1 & 2 & 0 \\
+\end{bmatrix}
+$$
+Where $b$ is any real number.
+
+Hence $B$ is any matrix that satisifies:
+$$
+\begin{bmatrix}{}
+  b_1\begin{bmatrix}{}
+  1 & 2 & 0 \\
+\end{bmatrix}\\
+b_2\begin{bmatrix}{}
+  1 & 2 & 0 \\
+\end{bmatrix}\\
+...\\
+b_n\begin{bmatrix}{}
+  1 & 2 & 0 \\
+\end{bmatrix}
+\end{bmatrix}
+$$
+
+Where $b_1,b_2,...,b_n$ are any real numbers.
+
+## Question 5
+
+### a)
+
+```{r q5a, echo=FALSE}
+q5_x=c(13.1,15.3,25.8,1.8,4.9,55.4,39.3,26.7,47.5,6.6,94.7,61.1,135.6,47.6)
+q5_y=c(27.3,42.4,38.7,4.5,23.0,166.3,109.7,80.1,150.7,20.3,189.7,131.3,404.2,149.0)
+q5_n = length(q5_x)
+q5_k = 1
+
+q5_X = matrix(c(rep(1, q5_n), q5_x), nrow=q5_n, ncol=q5_k+1)
+##dimnames(q5_X) = list(NULL, c("1970", "1980"))
+```
+
+$$\mathbf{y}=X\mathbf{\beta}+\mathbf{\varepsilon}$$
+Where:
+$$
+\mathbf{y}= \begin{bmatrix}{}
+  27.30 \\ 
+  42.40 \\ 
+  38.70 \\ 
+  4.50 \\ 
+  23.00 \\ 
+  166.30 \\ 
+  109.70 \\ 
+  80.10 \\ 
+  150.70 \\ 
+  20.30 \\ 
+  189.70 \\ 
+  131.30 \\ 
+  404.20 \\ 
+  149.00 \\ 
+  \end{bmatrix},\ 
+X=\begin{bmatrix}{}
+  1.00 & 13.10 \\ 
+  1.00 & 15.30 \\ 
+  1.00 & 25.80 \\ 
+  1.00 & 1.80 \\ 
+  1.00 & 4.90 \\ 
+  1.00 & 55.40 \\ 
+  1.00 & 39.30 \\ 
+  1.00 & 26.70 \\ 
+  1.00 & 47.50 \\ 
+  1.00 & 6.60 \\ 
+  1.00 & 94.70 \\ 
+  1.00 & 61.10 \\ 
+  1.00 & 135.60 \\ 
+  1.00 & 47.60 \\ 
+  \end{bmatrix}, \ 
+  \mathbf{\beta}=\begin{bmatrix}{}
+  \beta_0 \\ 
+  \beta_1 \\ 
+  \end{bmatrix}, \ 
+  \mathbf{\varepsilon}= \begin{bmatrix}{}
+  \varepsilon_1 \\ 
+  \varepsilon_2 \\ 
+  ... \\ 
+  \varepsilon_{14} \\ 
+  \end{bmatrix}
+$$
+
+### b)
+
+```{r q5b, echo=FALSE}
+
+q5_b_hat = ginv(t(q5_X) %*% q5_X) %*% t(q5_X) %*% q5_y
+
+p=ggplot(mapping=aes(x=q5_x,y=q5_y)) +
+  geom_point() +
+  geom_abline(slope = q5_b_hat[2], intercept = q5_b_hat[1])
+p
+#q5_X_formatted=print(xtable::xtable(q5_X,align=rep("",ncol(q5_X)+1)) , floating=FALSE, tabular.environment="bmatrix", hline.after=NULL, include.rownames=FALSE, include.colnames=FALSE)
+```
+
+$$
+\begin{aligned}
+X^TX\mathbf{b} &= X^T\mathbf{y} \\
+\mathbf{b} &= (X^TX)^{-1}X^T\mathbf{y} \\
+\mathbf{b} &= \begin{bmatrix}{}
+  -1.23 \\ 
+  2.70 \\ 
+  \end{bmatrix}
+\end{aligned}
+$$
+
+$$Intercept = -1.23,\ Slope=2.70$$
+
+### c)
+```{r q5c, echo=FALSE}
+q5_svar = c((t(q5_y - q5_X%*%q5_b_hat)%*%(q5_y - q5_X%*%q5_b_hat))/(q5_n - (q5_k + 1)))
+```
+
+$$
+\begin{aligned}
+s^2 &= \frac{(\mathbf{y}-X\mathbf{b})^T(\mathbf{y}-X\mathbf{b})}{n-(k+1)} \\
+&= \frac{\begin{bmatrix}{}
+  -6.86 \\ 
+  2.30 \\ 
+  -29.77 \\ 
+  0.87 \\ 
+  11.00 \\ 
+  17.87 \\ 
+  4.76 \\ 
+  9.20 \\ 
+  23.61 \\ 
+  3.70 \\ 
+  -64.90 \\ 
+  -32.53 \\ 
+  39.10 \\ 
+  21.64 \\ 
+  \end{bmatrix}^T\begin{bmatrix}{}
+  -6.86 \\ 
+  2.30 \\ 
+  -29.77 \\ 
+  0.87 \\ 
+  11.00 \\ 
+  17.87 \\ 
+  4.76 \\ 
+  9.20 \\ 
+  23.61 \\ 
+  3.70 \\ 
+  -64.90 \\ 
+  -32.53 \\ 
+  39.10 \\ 
+  21.64 \\ 
+  \end{bmatrix}}{`r q5_n`-(`r q5_k`+1)} \\
+   &= \frac{`r c(t(q5_y - q5_X%*%q5_b_hat)%*%(q5_y - q5_X%*%q5_b_hat))`}{`r q5_n-(q5_k+1)`} \\
+   &= `r q5_svar`
+\end{aligned}
+$$
+
+### d)
+```{r q5d, echo=FALSE}
+q5_trout_price = c(1, 18) %*% q5_b_hat
+```
+
+$$
+\begin{aligned}
+&\begin{bmatrix}{}
+1 & x \\
+\end{bmatrix}
+\mathbf{b}\\
+&=\begin{bmatrix}{}
+1 & 18
+\end{bmatrix}
+\begin{bmatrix}{}
+  -1.23 \\ 
+  2.70 \\ 
+  \end{bmatrix}\\
+&= `r q5_trout_price`
+\end{aligned}
+$$
+
+Thus the price in 1980 should be `r q5_trout_price` per pound.
+
+### e)
+```{r q5e, echo=FALSE}
+q5_Hat = q5_X %*% ginv(t(q5_X)%*% q5_X) %*% t(q5_X)
+q5_e = c((diag(1, dim(q5_Hat)[1]) - q5_Hat) %*% q5_y)
+q5_sres = q5_e / sqrt (q5_svar * (rep(1,dim(q5_Hat)[1])-diag(q5_Hat)) )
+```
+
+$$
+\begin{aligned}
+\mathbf{e} &= \mathbf{y} - X \mathbf{b} \\
+ &= \mathbf{y} - X (X^TX)^{-1}X^T\mathbf{y} \\
+&= (I-H) \mathbf{y} \\
+&= \begin{bmatrix}{}
+  -6.86 \\ 
+  2.30 \\ 
+  -29.77 \\ 
+  0.87 \\ 
+  11.00 \\ 
+  17.87 \\ 
+  4.76 \\ 
+  9.20 \\ 
+  23.61 \\ 
+  3.70 \\ 
+  -64.90 \\ 
+  -32.53 \\ 
+  39.10 \\ 
+  21.64 \\ 
+  \end{bmatrix}
+\end{aligned}
+$$
+$$
+\begin{aligned}
+z_i &= \frac{e_i}{\sqrt{s^2(1-H_{ii})}} \\
+\mathbf{z} &= \begin{bmatrix}{}
+  -0.26 \\ 
+  0.09 \\ 
+  -1.12 \\ 
+  0.03 \\ 
+  0.43 \\ 
+  0.67 \\ 
+  0.18 \\ 
+  0.34 \\ 
+  0.88 \\ 
+  0.14 \\ 
+  -2.65 \\ 
+  -1.23 \\ 
+  2.10 \\ 
+  0.81 \\ 
+  \end{bmatrix}
+\end{aligned}
+$$
+
+The standardised residual for sea scallops is `r q5_sres[13]`
+
+### f)
+```{r q5f, echo=FALSE}
+q5_cooks_distance = (1/(q5_k+1)) * (q5_sres)^2 * (diag(q5_Hat)/(1-diag(q5_Hat)))
+q5_cd_guide = 4/(q5_n-(q5_k+1))
+```
+
+$$
+\begin{aligned}
+D_i &= \frac{(\mathbf{b_{(−i)}} − \mathbf{b})^TX^TX(\mathbf{b_{(−i)}} − \mathbf{b})}{(k+1)s^2} = \frac{1}{k+1}z_i^2 \left(\frac{H_{ii}}{1-H_{ii}}\right) \\
+D &= \begin{bmatrix}{}
+  0.00 \\ 
+  0.00 \\ 
+  0.06 \\ 
+  0.00 \\ 
+  0.02 \\ 
+  0.02 \\ 
+  0.00 \\ 
+  0.01 \\ 
+  0.03 \\ 
+  0.00 \\ 
+  1.03 \\ 
+  0.08 \\ 
+  2.77 \\ 
+  0.03 \\ 
+  \end{bmatrix}
+\end{aligned}
+$$
+
+The Cook's distance for sea scallops is `r q5_cooks_distance[13]`.
+
+### g)
+```{r q5g, echo=FALSE}
+plot(q5_x, q5_y)
+abline (lm(q5_y ~ q5_x))
+```
+
+Sea scallops does not fit the linear model well, because the standardised residual is high at `r q5_sres[13]`. The Cook's distance is `r q5_cooks_distance[13]`, very large at well over 1. 

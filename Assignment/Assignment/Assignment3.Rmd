@@ -1,0 +1,645 @@
+---
+title: "Assignment 3"
+author: "Kevin Xu"
+date: "14 September 2017"
+output:
+  pdf_document: default
+  html_document: default
+  word_document:
+    reference_docx: Style_Sheet.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Matrix)
+library(MASS)
+library(car)
+library(tidyverse)
+library(knitr)
+```
+
+## Question 1
+
+### a)
+$C(X^TX)^c(X^TX)=C$
+
+Let $(X^TX)^c_a$ be a conditional inverse of $(X^TX)$, and $(X^TX)^c_b$ be another conditional inverse of $(X^TX)$, and $(X^TX)^c_a \neq (X^TX)^c_b$.
+
+$$
+\begin{aligned}
+C(X^TX)^c_aC^T &= C(X^TX)^c_bC^T \\
+C(X^TX)^c_aC^T &= C(X^TX)^c_a(X^TX)(X^TX)^c_bC^T \\
+C(X^TX)^c_aC^T &= C(X^TX)^c_a(C^{TT}((X^TX)^c_b)^T(X^TX)^T)^T \\
+C(X^TX)^c_aC^T &= C(X^TX)^c_a(C((X^TX)^T)^c_b(X^TX))^T \\
+C(X^TX)^c_aC^T &= C(X^TX)^c_a(C(X^TX)^c_b(X^TX))^T \\
+C(X^TX)^c_aC^T &= C(X^TX)^c_a(C)^T \\
+LHS &= RHS\\
+\end{aligned}
+$$
+
+### b)
+$X:n \times p$, $C:m \times p$, $n \geq p > m$, $r(C) = m < r(X) < p$
+$$
+\begin{aligned}
+r(C(X^TX)^cC^T) \leq r(C)\\
+\end{aligned}
+$$
+Also:
+$$
+\begin{aligned}
+r(C) = r(CC^T)&=r(C(X^TX)^c(X^TX)C^T)
+\end{aligned}
+$$
+Since $C(X^TX)^c(X^TX)=C$, it is estimable. Thus:
+$$
+\begin{aligned}
+r(C(X^TX)^c(X^TX))&=r(C(X^TX)^c(X^TX)C^T), \\
+r(C(X^TX)^c)&=r(C(X^TX)^cC^T) \\
+r(C(X^TX)^c(X^TX)) &\leq r(C(X^TX)^c) \\
+r(C(X^TX)^c(X^TX)C^T) &\leq r(C(X^TX)^cC^T) \\
+r(C) &\leq r(C(X^TX)^cC^T) \\
+\end{aligned}
+$$
+
+Thus $r(C(X^TX)^cC^T) = r(C) = m$, since it is full rank. it is non-singular.
+
+## Question 2
+
+```{r q2}
+tomato_yield_df = data.frame(
+  fertiliser = factor(c(rep(1,5), rep(2,4), rep(3,3))),
+  yield = c(43, 45, 47, 46, 48, 33, 37, 38, 35, 56, 54, 57))
+tomato_yield_df[,levels(tomato_yield_df$fertiliser)] = 0
+for (col_n in colnames(tomato_yield_df)){
+  tomato_yield_df[tomato_yield_df$fertiliser == col_n, col_n] = 1
+}
+
+q2_y = tomato_yield_df$yield
+q2_X = as.matrix(tomato_yield_df %>% mutate(intercept=1) %>% select(intercept,`1`,`2`,`3`))
+
+q2_n=dim(q2_X)[1]
+q2_r=rankMatrix(q2_X)[1]
+```
+
+### a)
+
+```{r q2a}
+q2_XtX = t(q2_X)%*%q2_X
+q2_XtXc = matrix(0, nrow=dim(q2_XtX)[1], ncol=dim(q2_XtX)[2])
+q2_XtXc[2:dim(q2_XtXc)[1],2:dim(q2_XtXc)[2]] = t(ginv(q2_XtX[2:dim(q2_XtXc)[1],2:dim(q2_XtXc)[2]]))
+q2_XtXc = t(q2_XtXc)
+
+```
+
+The conditional inverse is:
+
+`r kable(q2_XtXc, format = "markdown")`
+
+
+### b)
+```{r q2b}
+q2_b = q2_XtXc %*% t(q2_X) %*% q2_y
+```
+Any $\mathbf{b}$ vector in the form of:
+$$\mathbf{b}=  (X^TX)^c X^T \mathbf{y} + (I-(X^TX)^cX^TX) \mathbf{z}$$
+
+Where
+$$(X^TX)^c X^T \mathbf{y} =$$
+
+`r kable(q2_b, format = "markdown")`
+
+And 
+$$I-(X^TX)^cX^TX= $$
+
+`r kable(diag(dim(q2_XtXc)[1]) - q2_XtXc%*%q2_XtX, format = "markdown")`
+
+And thus:
+$$ \mathbf{b} =
+\begin{bmatrix}
+0.00000 + z_1\\
+45.80000 -  z_1 \\
+35.75000 -  z_1\\
+55.66667 -  z_1\\
+\end{bmatrix}
+$$
+
+For any $z_1$
+
+### c)
+
+```{r q2c}
+q2_t1 = c(4, 2, 1, 1)
+t(q2_t1)%*%q2_XtXc%*%q2_XtX == t(q2_t1)
+```
+
+Let 
+$$\mathbf{t} = 
+\begin{bmatrix}
+4\\
+2 \\
+1 \\
+1 \\
+\end{bmatrix}
+$$
+
+Then 
+$$\mathbf{t}^T(X^TX)^c \mathbf{t} = $$
+
+`r kable(t(q2_t1)%*%q2_XtXc%*%q2_XtX, format = "markdown")`
+
+Since the above is equal to $\mathbf{t}^T$, it is estimable.
+
+### d)
+
+```{r q2d}
+q2_t2 = c(1, 1, 0, 0)
+t(q2_t2)%*%q2_XtXc%*%q2_XtX == t(q2_t2)
+
+q2_SSRes = c(t(q2_y - q2_X %*% q2_b) %*% (q2_y - q2_X %*% q2_b))
+q2_svar = q2_SSRes / (q2_n - q2_r)
+
+q2_t_975 = qt(0.975, df= (q2_n-q2_r))
+
+q2_pi = c(t(q2_t2)%*%q2_b) + c(-1,1) * c(q2_t_975 * sqrt(q2_svar) * sqrt (1 + t(q2_t2)%*%q2_XtXc%*%q2_t2))
+
+#q2_model = lm(yield~fertiliser, data = tomato_yield_df)
+#predict(q2_model, data.frame(fertiliser=factor(1)), interval="prediction",level=0.95)
+```
+
+The 95% prediction interval is [`r q2_pi`]
+
+### e)
+
+Let $h_0:\tau_2-\tau_3 = 0$ and $h_1:\tau_2-\tau_3 \neq 0$
+
+```{r q2e}
+q2_C = matrix (c(0, 0, 1, -1), nrow = 1, ncol = 4) 
+q2_C%*%q2_XtXc%*%q2_XtX == q2_C
+q2_r2 = rankMatrix(q2_C)[1]
+
+q2_Fstat = c((t(q2_C%*%q2_b)%*%ginv(q2_C%*%q2_XtXc%*%t(q2_C))%*%(q2_C%*%q2_b)/q2_r2) / q2_svar)
+
+q2_pval = 1 - pf(q2_Fstat, df1 = q2_r2, df2 = (q2_n-q2_r))
+
+#linearHypothesis(q2_model, matrix(c(0,1,-1), 1, 3), test = "F")
+```
+
+The p-value $= `r q2_pval`$
+
+Thus can reject $H_0$ in favour of $H_1$ at 95% confidence level.
+
+## Question 3
+
+```{r q3}
+forbes_df = read.csv("./Forbes500.csv")
+forbes_df$sector = factor(forbes_df$sector)
+```
+
+### a)
+```{r q3a}
+q3_plot1 = ggplot(data = forbes_df, mapping = aes(x = logAssets, y = logSales, colour = sector)) +
+  geom_point() #+ 
+  #geom_smooth(method = lm)
+q3_plot1
+```
+
+It seem that the slope for each sector is the same. For sectors Energy and Finance, it seems the intercept is lower than the average, and for Retail, the intercept is higher than the average.
+
+### b)
+```{r q3b}
+forbes_df[c(paste("sector",levels(forbes_df$sector), sep="."), paste("logAssets", levels (forbes_df$sector), sep=":"))] = 0
+for (col_n in colnames(forbes_df[-1:-4])){
+  row_n = paste("sector",forbes_df$sector, sep=".") == col_n
+  forbes_df[row_n, col_n] = 1
+}
+for (col_n in colnames(forbes_df[-1:-4])){
+  row_n = (paste("logAssets",forbes_df$sector, sep=":") == col_n)
+  forbes_df[row_n, col_n] = forbes_df$logAssets[row_n]
+}
+
+q3_X = as.matrix(forbes_df %>% mutate(intercept = 1) %>% select(intercept, logAssets, starts_with("sector."), starts_with("logAssets:")))
+rownames(q3_X) = forbes_df$Company
+
+q3_n = dim(forbes_df)[1]
+q3_r = rankMatrix(q3_X)[1]
+
+q3_y = forbes_df$logSales
+```
+
+Refer to the R Markdown for the contents of the $X$ matrix.
+
+### c)
+```{r q3c}
+q3_XtX = t(q3_X) %*% q3_X
+q3_XtXc = matrix(0, nrow = 20, ncol = 20)
+q3_XtXc[3:dim(q3_XtXc)[1],3:dim(q3_XtXc)[2]] = t(ginv(q3_XtX[3:dim(q3_XtXc)[1],3:dim(q3_XtXc)[2]]))
+q3_XtXc = t(q3_XtXc)
+q3_H = q3_X %*% q3_XtXc %*% t(q3_X)
+
+#q3_XtX_ginv = ginv (q3_XtX)
+
+q3_b = q3_XtXc %*% t(q3_X) %*% q3_y
+
+q3_Res = c(q3_y - q3_X %*% q3_b)
+q3_SSRes = c(t(q3_Res) %*% q3_Res)
+q3_svar = q3_SSRes / (q3_n-q3_r)
+
+q3_std_Res = q3_Res /sqrt(q3_svar * (1 - diag(q3_H)))
+q3_cd = ((q3_std_Res^2)/rankMatrix(q3_X)[1])*(diag(q3_H)/(1-diag(q3_H)))
+
+q3c_plot1 = ggplot(mapping = aes(x = q3_X %*% q3_b, y = q3_Res)) + geom_point() + xlab("Fitted Values") + ylab("Standardized Residuals") + ggtitle("Residuals vs Fitted")
+q3c_plot2 = ggplot(mapping = aes(sample = q3_std_Res)) + geom_qq() + xlab("Theoretical Quantiles") + ylab("Standardized Residuals") + ggtitle("Normal QQ")
+q3c_plot3 = ggplot(mapping = aes(x = q3_X %*% q3_b, y = sqrt(abs(q3_std_Res)))) + geom_point() + xlab("Fitted Values") + ylab("Square Root of Standardized Residuals") + ggtitle("Scale-Location")
+q3c_plot4 = ggplot(mapping = aes(x = 1:length(q3_cd), y = abs(q3_cd))) + geom_col() + xlab("Observation Number") + ylab ("Cook's Distance") + ggtitle("Cook's Distance")
+q3c_plot5 = ggplot(mapping = aes(x = diag(q3_H), y = q3_std_Res)) + geom_point() + xlab("Standardized Residuals") + ylab ("Leverage") + ggtitle("Residuals vs Leverage")
+
+q3c_plot1
+q3c_plot2
+q3c_plot3
+q3c_plot4
+q3c_plot5
+
+#q3_imodel = lm (logSales~logAssets*sector, data = forbes_df)
+#q3_amodel = lm (logSales~logAssets+sector, data = forbes_df)
+#plot(q3_imodel)
+```
+
+One possible $\mathbf{b}$ is:
+`r kable(q3_b, format = "markdown")`
+
+From the diagnostic plot above, we can see Residuals vs Fitted is relatively consistant. The Normal QQ is also consistant with the exception of extreme values for right hand side. The Scale-Location is quite stable, so no evidence of heteroskedasticity. The Cooks Distance and Residual vs Leverage show no particular points that has oversized impact on our model.
+
+This is an indication that our model is appropriate for this data.
+
+### d)
+```{r q3d}
+q3_t1 = c(1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+identical (c(round(t(q3_t1) %*% q3_XtXc %*% q3_XtX,10)), q3_t1)
+
+```
+
+My $X$ matrix has columns like so:
+$[\mu, \beta, \tau_1,\tau_2,\tau_3,\tau_4,\tau_5,\tau_6,\tau_7,\tau_8,\tau_9,\xi_1,\xi_2,\xi_3,\xi_4,\xi_5,\xi_6,\xi_7,\xi_8,\xi_9]$
+
+So to test for overall intercept, $t^T=[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]$. 
+
+result:
+`r round(t(q3_t1) %*% q3_XtXc %*% q3_XtX,10)`
+
+Not equal to $t^T$, so not estimable
+
+### e)
+```{r q3e}
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+q3_t2 = c(0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1)
+identical (c(round(t(q3_t2) %*% q3_XtXc %*% q3_XtX,10)), q3_t2)
+```
+
+Commom Slope is $\beta$, slope for particular sector is $\beta - \xi_i$.
+
+Thus difference between slope for particular sector and commom Slope is 
+$$\beta - \xi_i - \beta = \xi_i $$
+
+From the above tests, non of them are estimable.
+
+### f)
+
+#### i.
+
+Let $H_0:\xi_1 = \xi_2 = \xi_3 = \xi_4 = \xi_5 = \xi_6 = \xi_7 = \xi_8 = \xi_9$ and $H_1:\xi_1 \neq \xi_2 \neq \xi_3 \neq \xi_4 \neq \xi_5 \neq \xi_6 \neq \xi_7 \neq \xi_8 \neq \xi_9$
+
+```{r q3f_i}
+q3_C1 = matrix(c(
+          0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1),
+          nrow=8, ncol = 20, byrow = T)
+
+identical (c(round(q3_C1 %*% q3_XtXc %*% q3_XtX,10)), c(q3_C1))
+
+q3_r2 = rankMatrix(q3_C1)[1]
+
+q3_Fstat1 = c((t(q3_C1%*%q3_b)%*%ginv(q3_C1%*%q3_XtXc%*%t(q3_C1))%*%(q3_C1%*%q3_b)/q3_r2) / q3_svar)
+
+q4f_i_pval = 1-pf(q3_Fstat1, df1 = q3_r2, df2 = (q3_n-q3_r))
+
+#anova(q3_amodel,q3_imodel)
+
+# q3_C_test = matrix(c(
+#           0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,
+#           0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1),
+#           nrow=8, ncol = 18, byrow = T)
+# linearHypothesis(q3_imodel, q3_C_test,test = "F")
+```
+
+P-value $= `r q4f_i_pval`$ .
+
+Thus cannot reject $H_0$ in favour of $H_1$ at 95% confidence level.
+
+#### ii. 
+
+For this we are going test two situations, one where intercept is the same regardless of interaction and one where intercept is the same and interaction is the same.
+
+```{r q3f_ii}
+q3_C2 = matrix(c(
+          0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0),
+          nrow=8, ncol = 20, byrow = T)
+
+identical (c(round(q3_C2 %*% q3_XtXc %*% q3_XtX,10)), c(q3_C2))
+
+q3_r3 = rankMatrix(q3_C2)[1]
+
+q3_Fstat2 = c((t(q3_C2%*%q3_b)%*%ginv(q3_C2%*%q3_XtXc%*%t(q3_C2))%*%(q3_C2%*%q3_b)/q3_r3) / q3_svar)
+
+q3f_ii_pval1 = 1-pf(q3_Fstat2, df1 = q3_r3, df2 = (q3_n-q3_r))
+
+q3_C3 = matrix(c(
+          0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,-1,
+          0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0),
+          nrow=16, ncol = 20, byrow = T)
+
+identical (c(round(q3_C3 %*% q3_XtXc %*% q3_XtX,10)), c(q3_C3))
+
+q3_r4 = rankMatrix(q3_C3)[1]
+
+q3_Fstat3 = c((t(q3_C3%*%q3_b)%*%ginv(q3_C3%*%q3_XtXc%*%t(q3_C3))%*%(q3_C3%*%q3_b)/q3_r4) / q3_svar)
+
+q3f_ii_pval2 = 1-pf(q3_Fstat3, df1 = q3_r4, df2 = (q3_n-q3_r))
+
+
+```
+
+For the first test $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4 = \tau_5 = \tau_6 = \tau_7 = \tau_8 = \tau_9$ and $H_1:\tau_1 \neq \tau_2 \neq \tau_3 \neq \tau_4 \neq \tau_5 \neq \tau_6 \neq \tau_7 \neq \tau_8 \neq \tau_9$
+
+P-value $= `r q3f_ii_pval1`$
+
+Thus cannot reject $H_0$ in favour of $H_1$ at 95% confidence level.
+
+For the second test $H_0:\tau_1 = \tau_2 = \tau_3 = \tau_4 = \tau_5 = \tau_6 = \tau_7 = \tau_8 = \tau_9\ and\ \xi_1 = \xi_2 = \xi_3 = \xi_4 = \xi_5 = \xi_6 = \xi_7 = \xi_8 = \xi_9$ and $H_1:\tau_1 \neq \tau_2 \neq \tau_3 \neq \tau_4 \neq \tau_5 \neq \tau_6 \neq \tau_7 \neq \tau_8 \neq \tau_9\ or \ \xi_1 \neq \xi_2 \neq \xi_3 \neq \xi_4 \neq \xi_5 \neq \xi_6 \neq \xi_7 \neq \xi_8 \neq \xi_9$
+
+P-value $= `r q3f_ii_pval2`$
+
+Thus can reject $H_0$ in favour of $H_1$ at 95% confidence level.
+
+### g)
+```{r q3g}
+q3_X2 = q3_X[,1:11]
+q3_XtX2 = t(q3_X2) %*% q3_X2
+q3_XtXc2 = matrix(0, nrow = 11, ncol = 11)
+q3_XtXc2[2:dim(q3_XtXc2)[1],2:dim(q3_XtXc2)[2]] = t(solve(q3_XtX2[2:dim(q3_XtXc2)[1],2:dim(q3_XtXc2)[2]]))
+q3_XtXc2 = t(q3_XtXc2)
+#q3_XtXc_ginv = ginv (t(q3_X2) %*% q3_X2)
+q3_b2 = q3_XtXc2 %*% t(q3_X2) %*% q3_y
+
+q3_SSRes2 = c(t(q3_y - q3_X2 %*% q3_b2) %*% (q3_y - q3_X2 %*% q3_b2))
+q3_n2 = dim(q3_X2)[1]
+q3_r2 = rankMatrix(q3_X2)[1]
+
+q3_svar2 = q3_SSRes2/(q3_n2-q3_r2)
+
+q3_C4 = matrix(c(
+          0,0,1,-1,0,0,0,0,0,0,0,
+          0,0,1,0,-1,0,0,0,0,0,0,
+          0,0,1,0,0,-1,0,0,0,0,0,
+          0,0,1,0,0,0,-1,0,0,0,0,
+          0,0,1,0,0,0,0,-1,0,0,0,
+          0,0,1,0,0,0,0,0,-1,0,0,
+          0,0,1,0,0,0,0,0,0,-1,0,
+          0,0,1,0,0,0,0,0,0,0,-1),
+          nrow=8, ncol = 11, byrow = T)
+q3_r5 = rankMatrix(q3_C3)[1]
+
+q3_Fstat4 = c((t(q3_C4%*%q3_b2)%*%ginv(q3_C4%*%q3_XtXc2%*%t(q3_C4))%*%(q3_C4%*%q3_b2)/q3_r5) / (t(q3_y - q3_X2 %*% q3_b2) %*% (q3_y - q3_X2 %*% q3_b2)/ (q3_n2 - rankMatrix(q3_X2)[1]) ))
+
+q3g_pval = 1-pf(q3_Fstat3, df1 = q3_r4, df2 = (q3_n - rankMatrix(q3_X2)[1]))
+
+#q3_model = lm (logSales~logAssets, data = forbes_df)
+#anova (q3_model, q3_amodel, q3_imodel)
+```
+
+From f) i. we can see that interaction can be removed (ahead of intercept). However from f) ii. we cannot remove both interaction and intercept. Hence, we shall build the model with intercept for each sector, but no interactions.
+
+### h)
+```{r q3h}
+q3_sector_mean_df = forbes_df %>% group_by (sector) %>% summarise(meanAssets = mean(logAssets))
+
+q3_sector_mean_df[c(paste("sector",levels(q3_sector_mean_df$sector), sep="."))] = 0
+for (col_n in colnames(q3_sector_mean_df[-1:-2])){
+  row_n = paste("sector",q3_sector_mean_df$sector, sep=".") == col_n
+  q3_sector_mean_df[row_n, col_n] = 1
+}
+
+
+q3_t975 = qt (0.975, df = (q3_n2-q3_r2))
+
+q3_x_star = as.matrix(cbind (data.frame(intercept=1), q3_sector_mean_df[,-1]))
+rownames(q3_x_star) = q3_sector_mean_df$sector
+q3_ci_range = q3_t975 * sqrt(q3_svar2) * sqrt(diag(q3_x_star %*% ginv (t(q3_X2)%*%q3_X2) %*% t(q3_x_star)))
+q3_ci_df = data.frame(predicted_logSales = q3_x_star%*% q3_b2)
+q3_ci_df = q3_ci_df %>% mutate(lower_bound = predicted_logSales - q3_ci_range, upper_bound = predicted_logSales + q3_ci_range)
+rownames(q3_ci_df) = q3_sector_mean_df$sector
+```
+
+The mean logAssets for each sector is:
+`r kable(q3_x_star[,1:2], format = "markdown")`
+
+The 95% confidence interval for of logSales at mean LogAssets for each sector is:
+`r kable(q3_ci_df, format = "markdown")`
+
+## Question 4
+
+```{r q4}
+orings_df = read.csv("./orings.csv")
+```
+
+### a)
+```{r q4a}
+q4_l = function (theta, y, x) {
+  eta = theta[1] + theta[2]*x
+  return (sum(y*log (1- exp(-exp(eta))) + (6-y)*(-exp(eta))))
+}
+
+q4_b_hat = optim(c(10, -0.1), q4_l, y = orings_df$orings.damage, x = orings_df$orings.temp, control = list(fnscale = -1,reltol=1e-16))$par
+
+#q4_model = glm(cbind(orings.damage, 6 - orings.damage) ~ orings.temp, family = binomial(link = "cloglog"), orings_df)
+```
+Estimated parameters are:
+`r kable(q4_b_hat, format = "markdown")`
+
+### b)
+```{r q4b}
+com_log_log_inv = function (eta) {
+  1-exp(-exp(eta))
+}
+
+q4_p_hat = com_log_log_inv (q4_b_hat[1]+q4_b_hat[2]*orings_df$orings.temp)
+
+q4_I_f = function (m, ey, xj, xk, p) {
+  -((ey*xj*xk*-log(1-p)/p) - (ey*xj*xk*((-log(1-p))^2)*(1-p)/(p^2)) + m*xj*xk*log(1-p))
+}
+
+q4_I = matrix(NA,nrow = 2, ncol = 2)
+q4_I[1,1]=sum(q4_I_f(m = 6, ey = 6*q4_p_hat, xj = 1, xk = 1, p = q4_p_hat))
+q4_I[1,2]=sum(q4_I_f(m = 6, ey = 6*q4_p_hat, xj = 1, xk = orings_df$orings.temp, p = q4_p_hat))
+q4_I[2,1]=sum(q4_I_f(m = 6, ey = 6*q4_p_hat, xj = orings_df$orings.temp, xk = 1, p = q4_p_hat))
+q4_I[2,2]=sum(q4_I_f(m = 6, ey = 6*q4_p_hat, xj = orings_df$orings.temp, xk = orings_df$orings.temp, p = q4_p_hat))
+
+q4_z975 = qnorm (0.975)
+
+q4_b_hat_ci = as.data.frame(q4_b_hat)
+q4_b_hat_ci_range = q4_z975 * sqrt(diag(solve(q4_I)))
+q4_b_hat_ci = cbind(q4_b_hat_ci, q4_b_hat_ci - q4_b_hat_ci_range, q4_b_hat_ci + q4_b_hat_ci_range)
+colnames(q4_b_hat_ci) = c("b", "lower_bound", "upper_Bound")
+rownames(q4_b_hat_ci) = c("b0", "b1")
+
+```
+For comp. log-log:
+$$
+\begin{aligned}
+g^{-1}(\eta)=p &= 1-exp(-exp(\eta))\\
+g(p)=\eta &= log (-log(1-p))\\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+l(\theta)&=log(L(\theta;y)) \\
+&=\sum_{i=1}^n \left(log \left({m_i\choose{y_i}} p_i (1-p_i)^{m_i-y_i}\right) \right) \\
+&=c+ \sum_{i=1}^n \left(y_i log (p_i) + (m_i-y_i)log(1-p_i) \right) \\
+&=c+ \sum_{i=1}^n \left(y_i log (1-exp(-exp(\eta_i))) + (m_i-y_i)log(exp(-exp(\eta_i))) \right) \\
+&=c+ \sum_{i=1}^n \left(y_i log (1-exp(-exp(\eta_i))) + (m_i-y_i)(-exp(\eta_i)) \right) \\
+&=c+ \sum_{i=1}^n \left(y_i log \left(\frac{1-exp(-exp(\eta_i))}{exp(-exp(\eta_i))}\right) + m_i(exp(\eta_i)) \right) \\
+&=c+ \sum_{i=1}^n \left(y_i log (exp(-exp(\eta_i))^{-1}-1) - m_i(exp(\eta_i)) \right) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\frac{d(l(\beta))}{d\beta_j}&=\sum_{i=1}^n \left(y_i x_{ij} (1-exp(-exp(\eta_i)))^{-1} exp(\eta_i) - m_i x_{ij} exp(\eta_i) \right) \\
+\frac{d^2(l(\beta))}{d\beta_jd\beta_k}&=\sum_{i=1}^n \left( \frac{y_i x_{ij} x_{ik}exp(\eta_i)}{1-exp(-exp(\eta_i))} -  \frac{y_i x_{ij} x_{ik}exp(2\eta_i)exp(-exp(\eta_i)) }{(1-exp(-exp(\eta_i)))^2} - m_i x_{ij} x_{ik} exp(\eta_i) \right) \\
+&=\sum_{i=1}^n \left( \frac{y_i x_{ij} x_{ik}(-log(1-p_i))}{p_i} -  \frac{y_i x_{ij} x_{ik}(-log(1-p_i))^2(1-p_i) }{p_i^2} + m_i x_{ij} x_{ik} log(1-p_i)) \right) \\
+I_{jk}  &= -E \left( \sum_{i=1}^n \left( \frac{y_i x_{ij} x_{ik}(-log(1-p_i))}{p_i} -  \frac{y_i x_{ij} x_{ik}(-log(1-p_i))^2(1-p_i) }{p_i^2} + m_i x_{ij} x_{ik} log(1-p_i)) \right) \right) \\
+&= - \sum_{i=1}^n \left( \frac{E(y_i) x_{ij} x_{ik}(-log(1-p_i))}{p_i} -  \frac{E(y_i) x_{ij} x_{ik}(-log(1-p_i))^2(1-p_i) }{p_i^2} + m_i x_{ij} x_{ik} log(1-p_i)) \right)
+\end{aligned}
+$$
+
+The information matrix is:
+`r kable(q4_I, format = "markdown")`
+
+The co-variance matrix is:
+`r kable(solve(q4_I), format = "markdown")`
+
+The confidence interval for $\hat{\beta}$ is:
+`r kable(q4_b_hat_ci, format = "markdown")`
+
+
+### c)
+```{r q4c}
+ylogxy <- function(x, y) ifelse(y == 0, 0, y*log(x/y))
+
+q4_m = rep(6, length(orings_df$orings.damage))
+q4_D = -2*sum(ylogxy(q4_m*q4_p_hat, orings_df$orings.damage) + ylogxy(q4_m*(1-q4_p_hat), q4_m - orings_df$orings.damage))
+q4_df = length(orings_df$orings.damage) - length(q4_b_hat)
+
+# deviance(q4_model)
+# df.residual(q4_model)
+
+q4_pval1 = 1- pchisq(q4_D, q4_df)
+ 
+q4_p_hat_null = sum(orings_df$orings.damage)/sum(q4_m)
+q4_D_null = -2*sum(ylogxy(q4_m*q4_p_hat_null, orings_df$orings.damage) + ylogxy(q4_m*(1-q4_p_hat_null), q4_m - orings_df$orings.damage))
+q4_df_null = length(orings_df$orings.damage) - 1
+
+q4_pval2 = 1- pchisq(q4_D_null - q4_D, q4_df_null - q4_df)
+
+```
+
+$$
+\begin{aligned}
+D_{full} &= -2 \sum\left(y_i log \frac{\hat{y_i}}{y_i}+(m_i-y_i)log\left(\frac{m_i-\hat{y_i}}{m_i-y_i}\right)\right) \\
+&= `r q4_D` \\
+D_{null} &= -2 \sum\left(y_i log \frac{\hat{y_i}}{y_i}+(m_i-y_i)log\left(\frac{m_i-\hat{y_i}}{m_i-y_i}\right)\right) \\
+&= `r q4_D_null` \\
+df_{full} &= `r q4_df`\\
+df_{null} &= `r q4_df_null`\\
+\chi^2 (D_{null} - D_{full}, df=df_{null}-df_{full}) &= `r q4_pval2`
+\end{aligned}
+$$
+
+
+### d)
+```{r q4d}
+q4_x_star = c(1,29)
+q4_si2 = c(t(q4_x_star) %*% solve(q4_I) %*% q4_x_star)
+
+q4_prediction = com_log_log_inv(t(q4_x_star) %*% q4_b_hat)
+q4_eta_range = q4_z975*sqrt(q4_si2)
+q4_prediction_ci_df = data.frame(prediction = q4_prediction, lower_bound = com_log_log_inv(t(q4_x_star) %*% q4_b_hat - q4_eta_range), upper_bound = com_log_log_inv(t(q4_x_star) %*% q4_b_hat + q4_eta_range))
+```
+$$
+\mathbf{x}_i^T\mathbf{\hat{\theta^*}} \pm z(1-\alpha/2)\sqrt{\mathbf{x}_i^T (I(\mathbf{\hat{\theta^*}})^{-1})\mathbf{x}_i}
+$$
+
+where $\mathbf{x_i}$ is:
+`r kable(as.matrix(q4_x_star), format = "markdown")`
+
+The confidence interval for our prediction at 29F is:
+`r kable(q4_prediction_ci_df, format = "markdown")`
+
+### e)
+```{r q4e}
+logit_inv <- function(x) 1/(1+exp(-x))
+
+ggplot(data = orings_df, mapping = aes(x = orings.temp, y = orings.damage)) + geom_point() +
+  stat_function(fun = function (x) {com_log_log_inv(q4_b_hat[1]+q4_b_hat[2]*x) * 6}, mapping = aes(colour = "comp. log-log"), geom = "line") +
+  stat_function(fun = function (x) {logit_inv(q4_b_hat[1]+q4_b_hat[2]*x) * 6}, mapping = aes(colour = "logit"), geom = "line") +
+  scale_colour_manual("Legend", values = c("red", "green")) +
+  expand_limits(x=c(20,90), y = c(0,6)) + theme(legend.position='top')
+```

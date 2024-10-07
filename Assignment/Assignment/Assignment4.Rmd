@@ -1,0 +1,477 @@
+---
+title: "Assignment 4"
+author: "Kevin Xu"
+date: "13 October 2017"
+header-includes:
+   - \usepackage{bm}
+output:
+  pdf_document: default
+  html_document: default
+  word_document:
+    reference_docx: Style_Sheet.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Matrix)
+library(MASS)
+library(car)
+library(tidyverse)
+library(knitr)
+library(nnet)
+library(gtools)
+library(ggfortify)
+```
+
+## Question 1
+
+### a)
+
+$$
+\begin{aligned}
+Y &\sim f(y;\theta,\phi) = exp\left(\frac{y\theta-b(\theta)}{a(\phi)}+c(y,\phi)\right) \\
+M(t) & = \int_{-\infty}^{\infty}e^{ty}\ f(y;\theta,\phi)\ dy \\
+& = \int_{-\infty}^{\infty} exp(ty)\ exp\left(\frac{y\theta-b(\theta)}{a(\phi)}+c(y,\phi)\right) \ dy \\
+& = \int_{-\infty}^{\infty} exp\left(\frac{a(\phi)ty}{a(\phi)} + \frac{y\theta-b(\theta)}{a(\phi)}+c(y,\phi)\right) \ dy \\
+& = \int_{-\infty}^{\infty} exp\left( \frac{y(a(\phi)t + \theta)-b(\theta)}{a(\phi)}+c(y,\phi)\right) \ dy \\
+& = \int_{-\infty}^{\infty} exp\left( \frac{y(a(\phi)t + \theta)-b(a(\phi)t + \theta)}{a(\phi)} + \frac{b(a(\phi)t + \theta)}{a(\phi)} - \frac{b(\theta)}{a(\phi)} + c(y,\phi)\right) \ dy \\
+& = exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \int_{-\infty}^{\infty} exp\left( \frac{y(a(\phi)t + \theta)-b(a(\phi)t + \theta)}{a(\phi)} + c(y,\phi)\right) \ dy \\
+& = exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \\
+\end{aligned}
+$$
+
+The integration above is over an pdf of an exponential family, and hence integrates to 1. 
+
+$$
+\begin{aligned}
+M(t) & = exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \\
+M'(t) &= \left(\frac{a(\phi)b'(a(\phi)t + \theta)}{a(\phi)}\right)\ exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \\
+M'(t) &= b'(a(\phi)t + \theta)\ exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \\
+M'(0) &= b'(a(\phi) \times 0 + \theta)\ exp\left(\frac{b(a(\phi) \times 0 + \theta) - b(\theta)}{a(\phi)}\right) \\
+M'(0) &= b'(\theta)\ exp\left(\frac{b(\theta) - b(\theta)}{a(\phi)}\right) \\
+M'(0) &= b'(\theta) = E(Y) \\
+\end{aligned}
+$$
+
+### b)
+
+$$
+\begin{aligned}
+M'(t) &= b'(a(\phi)t + \theta)\ exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) \\
+M''(t) &= a(\phi)b''(a(\phi)t + \theta)\ exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right) + b'(a(\phi)t + \theta)\ b'(a(\phi)t + \theta)\ exp\left(\frac{b(a(\phi)t + \theta) - b(\theta)}{a(\phi)}\right)\\
+M''(0) &= a(\phi)b''(a(\phi)\times 0 + \theta)\ exp\left(\frac{b(a(\phi)\times 0 + \theta) - b(\theta)}{a(\phi)}\right) + (b'(a(\phi)\times 0 + \theta))^2\ exp\left(\frac{b(a(\phi)\times 0 + \theta) - b(\theta)}{a(\phi)}\right)\\
+M''(0) &= a(\phi)b''(\theta)\ exp\left(\frac{b(\theta) - b(\theta)}{a(\phi)}\right) + (b'(\theta))^2\ exp\left(\frac{b(\theta) - b(\theta)}{a(\phi)}\right)\\
+M''(0) &= a(\phi)b''(\theta) + (b'(\theta))^2 \\
+Var(Y) &= M''(0) - (M'(0))^2 \\
+Var(Y) &= a(\phi)b''(\theta) + (b'(\theta))^2 - (b'(\theta))^2 \\
+Var(Y) &= a(\phi)b''(\theta) \\
+\end{aligned}
+$$
+
+## Question 2
+```{r q2, echo=FALSE, message=FALSE}
+radioactive_df = read_csv("./Radioactive.csv")
+
+radioactive_df$Material = factor(radioactive_df$Material)
+radioactive_df$Sample = factor(radioactive_df$Sample)
+radioactive_df = radioactive_df %>% mutate(Log_Counts = log(Counts))
+```
+
+### a)
+
+```{r q2a}
+q2a_plot = qplot(x = Time, y = Log_Counts, ylab="Log Counts", colour = Material, 
+                 shape = Sample, data = radioactive_df) + 
+  scale_shape_manual(values = c(16,2)) + coord_cartesian(ylim=c(2,8))
+q2a_plot 
+```
+
+### b)
+```{r q2b}
+q2b_model = glm(Counts ~ Time * Material * Sample, family = poisson(link="log"), data = radioactive_df)
+
+x_star = data.frame(Time = seq(0, 40, 1), Material = "Ag", Sample = "One")
+x_star = rbind(x_star, data.frame(Time = seq(0, 40, 1), Material = "Ag", Sample = "Two"))
+x_star = rbind(x_star, data.frame(Time = seq(0, 40, 1), Material = "Al", Sample = "One"))
+x_star = rbind(x_star, data.frame(Time = seq(0, 40, 1), Material = "Al", Sample = "Two"))
+x_star = rbind(x_star, data.frame(Time = seq(0, 40, 1), Material = "Cu", Sample = "One"))
+x_star = rbind(x_star, data.frame(Time = seq(0, 40, 1), Material = "Cu", Sample = "Two"))
+x_star$y_star = predict(q2b_model, newdata = x_star, type = "link")
+
+q2a_plot + geom_line(mapping = aes (x = Time, y= y_star, colour = Material, 
+                                    linetype = Sample), data = x_star) 
+
+autoplot (q2b_model, colour = "plum")
+autoplot (q2b_model, colour = "plum", which = c(4,6))
+
+
+q2b_model2 = glm(Counts ~ Time * Material * Sample, family = poisson(link="log"), 
+                 data = radioactive_df[-c(41,81,146),])
+x_star$y_star2 = predict(q2b_model2, newdata = x_star, type = "link")
+
+q2a_plot + geom_line(mapping = aes (x = Time, y= y_star2, colour = Material, linetype = Sample), 
+                     data = x_star)
+
+autoplot (q2b_model2, colour = "plum")
+autoplot (q2b_model2, colour = "plum", which = c(4,6))
+
+step(q2b_model)
+summary(q2b_model)
+```
+
+In light of a), we can see the randomness of the count of each time period is determined by different $\lambda$ at the time period. We also see that the $\lambda$ is decreases exponentially. To calculate count we would use a Poisson Distribution and for $\lambda$ that decreases exponentially with a log link.  
+
+Judging from the diagnostic plot, q2b_model does not have a uniform residual. It is mostly positive towards the low and high end, and mostly negative towards the middle. This suggest it may not be a good fit. The Cooks Distance are very high for some observations. We will try to remove those observations to see if it improves the model.
+
+The second set of diagnostic plot is q2b_model2, with the three observations with the high Cook's Distance removed. The resulting changed model is not much better then previous model. The same issues are still there, and the changed model also have more data points that have high Cooks's Distance.   
+
+Since the model with removed observations did not provide improvement over the original model, we shall continue using q2b_model.
+
+Running AIC over q2b_model suggest we shouldn't omit any of the variables.
+
+The final residual deviance indicate that this model is definitely better than the null model. Beyond that we can use the final residual deviance to compare against another model.
+
+### c)
+```{r q2c}
+q2c_model = glm(Counts ~ Time  * Sample * Material + TimeSquare * Sample * Material, 
+                family = poisson(link="log"), data = radioactive_df)
+
+q2c_model2 = step(q2c_model)
+
+anova (q2c_model2, q2c_model, test="Chisq")
+
+x_star$TimeSquare = x_star$Time^2
+x_star$y_star3 = predict(q2c_model2, newdata = x_star, type = "link")
+
+q2a_plot + geom_line(mapping = aes (x = Time, y= y_star3, colour = Material, linetype = Sample), 
+                     data = x_star) 
+
+autoplot (q2c_model2, colour = "plum")
+autoplot (q2c_model2, colour = "plum", which = c(4,6))
+
+summary (q2c_model2)
+
+```
+
+In the new model with TimeSquare, q2c_model. The AIC stepwise removed Sample:Material:TimeSquare and Sample:TimeSquare. The Chi Squared test shows the reduced model, q2c_model2, is as good as the full model. The AIC in this case is significantly lower than the previous model. The diagnostic plots shows uniformly flat residuals. This is an improvement over the previous model. The Cook's Distence is low for all observations. The residual deviance is also significantly lower for this model. Hence q2c_model2 is the superior model.
+
+### d)
+
+```{r q2d}
+q2d_model_ag = glm(Counts ~ Time * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Ag",])
+q2d_model_al = glm(Counts ~ Time * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Al",])
+q2d_model_cu = glm(Counts ~ Time * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Cu",])
+
+x_star$y_star4 = NA
+x_star[x_star$Material == "Ag",]$y_star4 = predict(q2d_model_ag, 
+                                newdata = x_star[x_star$Material == "Ag",], type = "link")
+x_star[x_star$Material == "Al",]$y_star4 = predict(q2d_model_al, 
+                                newdata = x_star[x_star$Material == "Al",], type = "link")
+x_star[x_star$Material == "Cu",]$y_star4 = predict(q2d_model_cu, 
+                                newdata = x_star[x_star$Material == "Cu",], type = "link")
+
+q2a_plot + geom_line(mapping = aes (x = Time, y= y_star4, colour = Material, linetype = Sample), 
+                     data = x_star) 
+
+q2d_model_ag2 = glm(Counts ~ (Time + TimeSquare) * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Ag",])
+q2d_model_al2 = glm(Counts ~ (Time + TimeSquare) * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Al",])
+q2d_model_cu2 = glm(Counts ~ (Time + TimeSquare) * Sample, family = poisson(link="log"), 
+                   data = radioactive_df[radioactive_df$Material == "Cu",])
+
+q2d_model_ag2 = step(q2d_model_ag2) 
+q2d_model_al2 = step(q2d_model_al2)
+q2d_model_cu2 = step(q2d_model_cu2)
+
+
+x_star$y_star5 = NA
+x_star[x_star$Material == "Ag",]$y_star5 = predict(q2d_model_ag2, 
+                                newdata = x_star[x_star$Material == "Ag",], type = "link")
+x_star[x_star$Material == "Al",]$y_star5 = predict(q2d_model_al2, 
+                                newdata = x_star[x_star$Material == "Al",], type = "link")
+x_star[x_star$Material == "Cu",]$y_star5 = predict(q2d_model_cu2, 
+                                newdata = x_star[x_star$Material == "Cu",], type = "link")
+
+q2a_plot + geom_line(mapping = aes (x = Time, y= y_star5, colour = Material, linetype = Sample), 
+                     data = x_star) 
+```
+
+`r kable(head(x_star[x_star$Material == "Ag",]), format = "markdown")`
+`r kable(head(x_star[x_star$Material == "Al",]), format = "markdown")`
+`r kable(head(x_star[x_star$Material == "Cu",]), format = "markdown")`
+
+As can be seen. The predictions y_star and y_star4 and the prediction y_star3 and y_star5 are exactly the same. Hence we can see that the model with interaction from b) and c) is exactly the same as if we run the analysis one material at a a time.
+
+## Question 3
+```{r q3}
+load("ologit.Rdata")
+dat$apply = factor(dat$apply, levels = c("unlikely", "somewhat likely", "very likely"), 
+                   ordered = TRUE)
+dat$pared = factor(dat$pared)
+dat$public = factor(dat$public)
+```
+
+### a)
+```{r q3a}
+q3_plot = ggplot(data=dat, mapping = (aes(x = apply, y = gpa))) + geom_boxplot(mapping = aes(colour = pared))
+q3_plot
+q3a_model1 = multinom(apply ~ pared + public + gpa, data = dat)
+summary(q3a_model1)
+#predict(q3a_model1, newdata = data.frame(pared=dat$pared, gpa = dat$gpa, public = dat$public), type = "probs")
+
+q3a_model2 = multinom(apply ~ pared + public + gpa + pared:gpa, data = dat)
+summary(q3a_model2)
+
+anova(q3a_model1,q3a_model2,test="Chisq")
+
+```
+
+For this multinomial model, pared, public and gpa and pared:gpa was fitted. pared:gpa interaction was added as it is proven to be significant.
+
+
+### b)
+```{r q3b}
+q3b_model1 = polr(apply ~ pared + public + gpa, data = dat)
+summary(q3b_model1)
+#predict(q3b_model1, newdata = data.frame(pared=dat$pared, gpa = dat$gpa, public = dat$public), type = "probs")
+
+q3b_model2 = polr(apply ~ pared + public + gpa + pared:gpa, data = dat)
+summary(q3b_model2)
+
+anova(q3b_model1, q3b_model2)
+```
+
+For the ordinal model, pared + public + gpa was selected, as pared:gpa interaction does not produce a better model.
+
+Compared to the multinomial model, the ordinal model does not require the pared:gpa interaction. Also the coefficients for multinomial model is different compared to the ordinal model. In the multinomial model, there are is sets of coefficients for somewhat likely, and another set for very likely (unlikely can be derived), whereas in the ordinal model, there is only one set of coefficients for all of unlikely, somewhat likely and very likely.
+
+### c)
+```{r q3c}
+q4_pr = data.frame(pared=factor(1), gpa = 3.0, public = factor(1))
+q4_pr = cbind(q4_pr, Prediction = predict(q3b_model1, newdata = q4_pr, type = "probs"))
+```
+
+Prediction for a student whose parents have graduate degrees and who went to a public university, with a gpa of 3.0, is very likely to undertake graduate study is:  
+
+`r kable(q4_pr, format = "markdown")`
+
+### d)
+```{r q3d}
+q3_X_private = matrix(c( 1, 0, 3))
+q3_X_public = matrix(c( 1, 1, 3))
+
+q3_d_odds_ratio = exp((t(q3_X_public - q3_X_private)) %*% matrix(q3b_model1$coefficients))
+```
+
+$$
+\begin{aligned}
+\gamma_{ij} &= logit^{-1}(\theta_j - \mathbf{x}_i^T \mathbf{\beta})=\gamma_{j}(\mathbf{x}_i)=P(Y\leq j | \mathbf{x}_i) \\
+\frac{\frac{P(Y\leq unlikely | \mathbf{x}_{private})}{1-P(Y\leq unlikely | \mathbf{x}_{private})}} {\frac{P(Y\leq unlikely | \mathbf{x}_{public})}{1-P(Y\leq unlikely | \mathbf{x}_{public})}} &= \frac{exp(logit(P(Y\leq unlikely | \mathbf{x}_{private})))}{exp(logit(P(Y\leq unlikely | \mathbf{x}_{public})))} \\
+&= \frac{exp(\theta_{unlikely} - \mathbf{x}_{private}^T \mathbf{\beta})}{exp(\theta_{unlikely} - \mathbf{x}_{public}^T \mathbf{\beta})} \\
+&= {exp(\mathbf{x}_{public}^T \mathbf{\beta} - \mathbf{x}_{private}^T \mathbf{\beta})} \\
+&= {exp((\mathbf{x}_{public}^T - \mathbf{x}_{private}^T) \mathbf{\beta})} \\
+\text{let }\mathbf{x}_{private} = (1,0,3), \mathbf{x}_{public} = (1,1,3) \\
+&= `r q3_d_odds_ratio` \\
+\end{aligned}
+$$
+
+## Question 4
+
+### a)
+
+$$
+\begin{aligned}
+B(\bm{\alpha}) &= \frac{\prod_{i=1}^d \Gamma(\alpha_i)}{\Gamma(\sum_{i=1}^d \alpha_i)} \\
+E(x_j) &= \int_{-\infty}^{\infty} ... \int_{-\infty}^{\infty} x_j\ f(\mathbf{x})\ dx_1 ... dx_d \\ 
+E(x_j) &= \int_{-\infty}^{\infty} ... \int_{-\infty}^{\infty} x_j\ \frac{1}{B(\bm{\alpha})} \prod_{i=1}^dx_i^{\alpha_i-1} \ dx_1 ... dx_d \\ 
+E(x_j) &= \int_{-\infty}^{\infty} ... \int_{-\infty}^{\infty} \frac{1}{B(\bm{\alpha})} \prod_{i=1}^{j-1} x_i^{\alpha_i-1}\ x_j^{(\alpha_j+1)-1}\ \prod_{i=j+1}^{d} x_i^{\alpha_i-1} \ dx_1 ... dx_d \\ 
+E(x_j) &= \int_{-\infty}^{\infty} ... \int_{-\infty}^{\infty} \frac{1}{B(\bm{\alpha})} B(\mathbf{\alpha_{(-j)}}, \alpha_j+1) \frac{1}{B(\mathbf{\alpha_{(-j)}}, \alpha_j+1)} \prod_{i=1}^{j-1} x_i^{\alpha_i-1}\ x_j^{(\alpha_j+1)-1}\ \prod_{i=j+1}^{d} x_i^{\alpha_i-1} \ dx_1 ... dx_d \\ 
+E(x_j) &= \frac{1}{B(\bm{\alpha})} B(\mathbf{\alpha_{(-j)}}, \alpha_j+1) \int_{-\infty}^{\infty} ... \int_{-\infty}^{\infty}  \frac{1}{B(\mathbf{\alpha_{(-j)}}, \alpha_j+1)} \prod_{i=1}^{j-1} x_i^{\alpha_i-1}\ x_j^{(\alpha_j+1)-1}\ \prod_{i=j+1}^{d} x_i^{\alpha_i-1} \ dx_1 ... dx_d \\ 
+E(x_j) &= \frac{1}{B(\bm{\alpha})} B(\mathbf{\alpha_{(-j)}}, \alpha_j+1) \\ 
+E(x_j) &= \frac{\Gamma(\sum_{i=1}^d \alpha_i)}{\prod_{i=1}^d \Gamma(\alpha_i)} \frac{\prod_{i=1}^{j-1} \Gamma(\alpha_i)\ \Gamma(\alpha_j+1)\ \prod_{i=j+1}^d \Gamma(\alpha_i) }{\Gamma((\sum_{i=1}^d \alpha_i)+1)} \\ 
+E(x_j) &= \frac{\Gamma(\sum_{i=1}^d \alpha_i)}{\prod_{i=1}^d \Gamma(\alpha_i)} \frac{\prod_{i=1}^{j-1} \Gamma(\alpha_i)\ \alpha_j\Gamma(\alpha_j)\ \prod_{i=j+1}^d \Gamma(\alpha_i) }{(\sum_{i=1}^d \alpha_i)\Gamma((\sum_{i=1}^d \alpha_i))} \\ 
+E(x_j) &= \frac{\Gamma(\sum_{i=1}^d \alpha_i)}{\prod_{i=1}^d \Gamma(\alpha_i)} \frac{\alpha_j\prod_{i=1}^{d} \Gamma(\alpha_i) }{(\sum_{i=1}^d \alpha_i)\Gamma((\sum_{i=1}^d \alpha_i))} \\ 
+E(x_j) &= \frac{\alpha_j }{\sum_{i=1}^d \alpha_i} \\ 
+\end{aligned}
+$$
+
+### b)
+
+$$
+\begin{aligned}
+k(\bm{\theta}|\mathbf{x}) &= \frac{h(\bm{\theta})f(\mathbf{x}|\bm{\theta})}{k(\mathbf{x})} \\
+k(\mathbf{p}|\mathbf{x}) &= \frac{Dir(\bm{\alpha})\ multinomial(n, \mathbf{p})}{k(\mathbf{x})} \\
+k(\mathbf{p}|\mathbf{x}) &= \frac{\frac{1}{B(\bm{\alpha})} \prod_{i=1}^n p_i^{\alpha_i-1} \ \frac{\Gamma(n+1)}{\prod_{i=1}^n \Gamma(x_i+1)} \prod_{i=1}^np_i^{x_i}}{k(\mathbf{x})} \\
+k(\mathbf{p}|\mathbf{x}) &= \frac{\frac{\Gamma(n+1)}{B(\bm{\alpha})\prod_{i=1}^n \Gamma(x_i+1)} \prod_{i=1}^n p_i^{(\alpha_i+x_i)-1}}{k(\mathbf{x})} \\
+k(\mathbf{p}|\mathbf{x}) &= \frac{\frac{\Gamma(n+1)}{B(\bm{\alpha}) \prod_{i=1}^n \Gamma(x_i+1)} \frac{1}{B(\alpha_i+x_i)} \prod_{i=1}^n p_i^{(\alpha_i+x_i)-1}}{\frac{1}{B(\alpha_i+x_i)}k(\mathbf{x})} \\
+k(\mathbf{p}|\mathbf{x}) &= \frac{\frac{\Gamma(n+1)}{B(\bm{\alpha}) \prod_{i=1}^n \Gamma(x_i+1)} \frac{1}{B(\alpha_i+x_i)} \prod_{i=1}^n p_i^{(\alpha_i+x_i)-1}}{\frac{\Gamma(n+1)}{B(\bm{\alpha}) \prod_{i=1}^n \Gamma(x_i+1)}\int_{-\infty}^{\infty}...\int_{-\infty}^{\infty}  \frac{1}{B(\alpha_i+x_i)} \prod_{i=1}^n p_i^{(\alpha_i+x_i)-1} \ dp_1 ... dp_n} \\
+k(\mathbf{p}|\mathbf{x}) &= { \frac{1}{B(\alpha_i+x_i)} \prod_{i=1}^n p_i^{(\alpha_i+x_i)-1}} \\
+k(\mathbf{p}|\mathbf{x}) &\sim Dir(\bm{\alpha}+\mathbf{x})
+\end{aligned}
+$$
+
+### c)
+
+For each row, i.e. status:
+$$
+E(Dir(\alpha_i+x_i)) = \frac{\alpha_i+x_i}{\sum_{i=1}^n (\alpha_i+x_i)}
+$$
+
+```{r q4c}
+q4_status = c("STW","UTW","HEX", "PEX","TF")
+q4_x = matrix(
+  c(210, 60, 0, 1, 1,
+    88, 641, 0, 4, 13,
+    0, 0, 0, 0, 0, 
+    1, 0, 0, 0, 1,
+    0, 0, 0, 0, 81),
+  nrow = 5, ncol = 5, byrow = TRUE)
+rownames(q4_x) = q4_status
+colnames(q4_x) = q4_status
+
+q4_x_rowsum = matrix(rowSums(q4_x), 5, 5)
+q4_p = q4_x/sum(q4_x)
+
+q4_alpha = matrix(
+  c(1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 
+    1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1),
+  nrow = 5, ncol = 5, byrow = TRUE)
+
+q4_alpha_rowsum = matrix(rowSums(q4_alpha), 5, 5)
+
+q4_posterior_mean = (q4_alpha+q4_x)/(q4_alpha_rowsum + q4_x_rowsum)
+
+#ddirichlet(x = q4_p, alpha = 1 + c(q4_p))
+```
+
+The estimate is as follows:  
+
+`r kable(round (q4_posterior_mean, 5), format = "markdown")`
+
+
+### d)
+
+For the last row we know that TF is the final state, and does not have transitions to other states. Therefore we can use a prior which gives 100% probability to the response TF, and 0% probability to all the others. However, each $\alpha_i$ needs to be > 0, so we shall take Dir(0.00001, 0.00001, 0.00001, 0.00001, 10000).
+
+
+```{r q4d}
+q4_alpha2 = matrix(
+  c(1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 
+    1, 1, 1, 1, 1,
+    0.00001, 0.00001, 0.00001, 0.00001, 10000),
+  nrow = 5, ncol = 5, byrow = TRUE)
+
+q4_alpha_rowsum2 = matrix(rowSums(q4_alpha2), 5, 5)
+
+q4_posterior_mean2 = (q4_alpha2+q4_x)/(q4_alpha_rowsum2 + q4_x_rowsum)
+
+#ddirichlet(x = q4_p, alpha = 1 + c(q4_p))
+```
+
+The resulting probability of transition is as follows:  
+
+`r kable(round (q4_posterior_mean2, 5), format = "markdown")`
+
+## Question 5
+
+### a)
+
+$$
+\begin{aligned}
+U &\sim U(0,1) \\
+Y &= \sqrt{3}\ tan\left(\pi\left(U-\frac{1}{2}\right)\right),\ -\infty<y<\infty \\
+\frac{1}{\sqrt{3}}Y &= tan\left(\pi\left(U-\frac{1}{2}\right)\right) \\
+arctan\left(\frac{1}{\sqrt{3}}Y\right) &= \pi\left(U-\frac{1}{2}\right) \\
+\frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}Y\right) &= \left(U-\frac{1}{2}\right) \\
+\frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}Y\right) +\frac{1}{2} &= U \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+F_Y(y) = P(Y\leq y) &= P(g(x)\leq y) = P(X <g^{-1}(y))=F_X(g^{-1}(y)) \\
+F_Y(y) &= P(Y\leq y) \\
+F_Y(y) &= P\left(\sqrt{3}\ tan\left(\pi\left(U-\frac{1}{2}\right)\right) \leq y\right) \\
+F_Y(y) &= P\left(U \leq \frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}y\right) +\frac{1}{2}\right) \\
+F_Y(y) &= F_U\left(\frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}y\right) +\frac{1}{2}\right) \\
+F_Y(y) &= \frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}y\right) +\frac{1}{2}\\
+f_Y(y) &= \frac{d\left(\frac{1}{\pi} arctan\left(\frac{1}{\sqrt{3}}y\right) +\frac{1}{2}\right)}{dy} \\
+f_Y(y) &= \frac{1}{\pi}\frac{1}{\sqrt{3}}\frac{1}{\left(\frac{1}{\sqrt{3}}y\right)^2+1} \\
+f_Y(y) &= \frac{1}{\pi\sqrt{3}} \left(\frac{1}{3}y^2+1\right)^{-1} \\
+\end{aligned}
+$$
+
+### b)
+To simulate from the density $f_X$, we assume that we have envelope density $h$ from which you can simulate, and that we have some $k < \infty$ such that $\underset{x}{sup}\ f_X(x)/h(x) \leq k$.  
+
+1. Simulate $X$ from $h$.
+2. Generate $Y \sim U(0, k\ h(X))$.
+3. If $Y < f_X(X)$ then return $X$, otherwise go back to step 1.
+
+In this case:
+
+$$
+\begin{aligned}
+f_X(x) &\sim t(3) \\
+f_X(x) &= \frac{2}{\sqrt{3} \pi}\left( 1 + \frac{x^2}{3} \right)^{-2} \\
+h(x) &= \frac{1}{\sqrt{3} \pi}\left( 1 + \frac{x^2}{3} \right)^{-1} \\
+k^* &= \underset{-\infty<x<\infty}{sup} \frac{f_X(x)}{h(x)} \\
+k^* &= \underset{-\infty<x<\infty}{sup} \frac{ \frac{2}{\sqrt{3} \pi}\left( 1 + \frac{x^2}{3} \right)^{-2}}{\frac{1}{\sqrt{3} \pi}\left( 1 + \frac{x^2}{3} \right)^{-1}} \\
+k^* &=  {2\left( 1 + \frac{x^2}{3} \right)^{-1}} \\
+\text{Let }u &= 1 + \frac{x^2}{3} \\
+\frac{dk^*}{dx} &= \frac{dk^*}{du}\frac{du}{dx} \\
+\frac{dk^*}{du} &= -2u^{-2}\, \  \frac{du}{dx}=\frac{2x}{3} \\
+\frac{dk^*}{dx} &= \frac{-4x}{3}\left(1+\frac{x^2}{3}\right) \\
+0 &= \frac{-4x}{3}\left(1+\frac{x^2}{3}\right) \\
+x &= 0 \\ 
+\frac{d^2k^*}{dx^2} &= 2\left( \frac{8x^2}{9(1+\frac{x^2}{3})^3} -  \frac{2}{3(1+\frac{x^2}{3})^2}\right) \\
+\text{Let } x &= 0 \\
+\frac{d^2k^*}{dx^2} &= -\frac{4}{3} \\
+\text{Thus, }x&=0 \text{ is maximum} \\
+k^* &=  {2\left( 1 + \frac{0^2}{3} \right)^{-1}} \\
+k^* &=  2 \\
+\end{aligned} 
+$$
+
+### c)
+```{r q5c}
+t3.sim <- function() {
+  f = function(x) {2/(sqrt(3)*pi) * (1+(x^2)/3)^(-2)}
+  h = function(x) {1/(sqrt(3)*pi) * (1+(x^2)/3)^(-1)}
+  k = 2
+  f_x = 0
+  Y = 1
+  while (Y >= f_x) {
+    X = sqrt(3)*tan(pi*(runif(1) - 1/2))
+    Y = runif(1, 0, k*h(X))
+    f_x = f(X)
+  }
+  return(X)
+}
+
+set.seed(1000)
+q5_n = 1000
+q5_g = rep(0, q5_n)
+for (i in 1:q5_n) {q5_g[i] = t3.sim()}
+
+q5_plot = ggplot(mapping = aes(x = q5_g)) + geom_histogram(mapping = aes( y=..density.. ), 
+                              breaks = c(min(q5_g), seq(-15.5,15.5,1), max(q5_g)), 
+                              fill = "white", colour = "black") + 
+  ggtitle("theoretical and simulated t(3) density") + labs(x = "x", y = "pdf f(x)")
+
+# hist(q5_g, breaks = c(min(q5_g), seq(-15,15,1), max(q5_g)), freq=FALSE, xlab="x", ylab="pdf f(x)", main="theoretical and simulated t(3) density")
+# x = seq(min(q5_g), max(q5_g), .1)
+# lines(x, dt(x, 3))
+
+q5_plot = q5_plot + stat_function(fun = dt, args = list(df = 3), colour = "red")
+q5_plot
+```

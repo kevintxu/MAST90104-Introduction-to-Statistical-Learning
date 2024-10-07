@@ -1,0 +1,70 @@
+---
+title: "Store24"
+author: "Kevin Xu"
+date: "15 August 2018"
+output: ioslides_presentation
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(plotly)
+library(readxl)
+library(GGally)
+```
+
+## Store 24
+```{r plot, warning=FALSE}
+store24_df = read_excel("store24.xlsx", sheet = "Store24")
+sales_pairs = ggpairs(store24_df, columns = c("MTenure", "CTenure", "Pop", "Comp", "Visibility", "PedCount", "Res", "Hours24", "CrewSkill", "MgrSkill", "ServQual", "Sales"))
+ggplotly(sales_pairs)
+```
+
+## Simple Model
+```{r model}
+model_sales_full = lm (Sales ~ MTenure+CTenure+Pop+Comp+Visibility+PedCount+Res+Hours24+CrewSkill+MgrSkill+ServQual, data=store24_df)
+model_sales_aic = step(model_sales_full)
+summary (model_sales_aic)
+```
+
+
+## Shiny Presentation
+
+This R Markdown presentation is made interactive using Shiny. The viewers of the presentation can change the assumptions underlying what's presented and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Interactive Plot
+
+```{r eruptions}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## R Output
+
+```{r cars}
+summary(cars)
+```
+
+
