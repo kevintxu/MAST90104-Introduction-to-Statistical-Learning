@@ -1,0 +1,16 @@
+*.pdf
+*.xlsx
+*.xls
+*.docx
+
+.Rhistory
+.RData
+.Rproj.user
+
+temp
+tex2pdf.*
+
+*.zip
+.suo
+
+*.png
